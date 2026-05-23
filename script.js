@@ -905,6 +905,17 @@ async function insertOCRTransaction() {
 
   await pushToSupabase(tx);
 
+  await fetch(
+  'https://script.google.com/macros/s/AKfycbw-dRNNXXpYqRSmhZAFc2eCaNbeL-p_1emfsznTrTxwVajRLwAB2F2_MnS--nf2X8Ku/exec',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(tx)
+  }
+);
+
   renderAll();
 
   document.getElementById('ocrPreview')
