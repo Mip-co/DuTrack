@@ -4,7 +4,7 @@ Aplikasi pembukuan keuangan pribadi berbasis web. Dirancang khusus untuk pencata
 
 **Website:**
 ```
-https://mip-co.github.io/FinTrack/
+https://mip-co.github.io/DuTrack/
 ```
 
 ---
