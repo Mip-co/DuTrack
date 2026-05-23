@@ -1,54 +1,56 @@
-# FinTrack — Setup & Konfigurasi ver 1.0
+# DuTrack — Setup & Konfigurasi v2.0
 
-## 1. Buka Website FinTrack
+Aplikasi pembukuan keuangan pribadi berbasis web. Dirancang khusus untuk pencatatan pengeluaran beasiswa per semester, lengkap dengan scan struk, cloud sync, dan export laporan LPJ otomatis.
 
-Website:
-
-```text
+**Website:**
+```
 https://mip-co.github.io/FinTrack/
 ```
 
-Saat pertama kali membuka website, login belum bisa digunakan sebelum konfigurasi Supabase dilakukan.
+---
+
+## Fitur
+
+- Dashboard saldo, pemasukan, pengeluaran, dan tabungan
+- Tambah, edit, hapus transaksi dengan kategori
+- Scan struk otomatis via OCR (Tesseract.js)
+- Simpan foto struk ke Supabase Storage
+- Export XLSX multi-sheet (Ringkasan, Transaksi, Per Kategori, Per Bulan)
+- Export PDF laporan lengkap
+- **Export LPJ Beasiswa** — format tabel siap submit per semester
+- Dark mode / Light mode
+- Login & register via Supabase Auth
+- Mode lokal tanpa akun (data di browser)
+- Sinkronisasi cloud antar device
 
 ---
 
-# 2. Membuat Akun Supabase
+## Tech Stack
 
-1. Buka:
-
-```text
-https://supabase.com
-```
-
-2. Login / daftar akun Supabase
-
-3. Klik:
-
-```text
-New Project
-```
-
-4. Isi:
-
-* Nama project
-* Password database
-* Region
-
-5. Tunggu sampai project selesai dibuat
+- HTML, CSS, Vanilla JavaScript
+- Chart.js — grafik dashboard
+- Tesseract.js — OCR scan struk
+- Supabase — Auth, Database, Storage
+- SheetJS (xlsx-js-style) — export XLSX
+- jsPDF + html2canvas — export PDF
+- GitHub Pages — hosting
 
 ---
 
-# 3. Membuat Database Table
+## Setup Supabase
 
-## Masuk ke:
+### 1. Buat Akun & Project
 
-```text
-Supabase Dashboard
-→ SQL Editor
-→ New Query
-```
+1. Buka [supabase.com](https://supabase.com) → login / daftar
+2. Klik **New Project**
+3. Isi nama project, password database, dan region (pilih Singapore)
+4. Tunggu project selesai dibuat
 
-## Paste SQL berikut:
+---
+
+### 2. Buat Tabel Database
+
+Masuk ke **SQL Editor → New Query**, paste SQL berikut lalu klik **Run:**
 
 ```sql
 create table transactions (
@@ -59,6 +61,7 @@ create table transactions (
   description text,
   category text,
   date date not null,
+  receipt_url text,
   created_at timestamptz default now()
 );
 
@@ -69,216 +72,144 @@ create policy "Users can manage own transactions"
   using (auth.uid() = user_id);
 ```
 
-## Klik:
+Jika berhasil, tabel `transactions` muncul di **Database → Tables**.
 
-```text
-RUN
-```
+---
 
-Jika berhasil, table `transactions` akan muncul di:
+### 3. Buat Storage Bucket untuk Struk
 
-```text
-Database → Tables
+Masuk ke **Storage → New Bucket:**
+
+- Nama bucket: `receipts`
+- Public bucket: **ON** (agar URL struk bisa diakses)
+
+Tambahkan policy storage di **Storage → Policies → receipts:**
+
+```sql
+-- Allow authenticated users to upload
+create policy "Users can upload receipts"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'receipts' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Allow public read
+create policy "Public can view receipts"
+  on storage.objects for select
+  to public
+  using (bucket_id = 'receipts');
 ```
 
 ---
 
-# 4. Mengambil Supabase URL & Anon Key
+### 4. Ambil URL & Anon Key
 
-## Masuk ke:
+Masuk ke **Project Settings → API Keys → Legacy anon, service_role API keys:**
 
-```text
-Project Settings
-→ API
+| Field | Lokasi |
+|---|---|
+| **Project URL** | Settings → Integrations → Data API → API URL (hapus `/rest/v1/` di akhir) |
+| **Anon Key** | Settings → API Keys → baris `anon public` |
+
+> ⚠️ Jangan gunakan `service_role` key di frontend.
+
+---
+
+### 5. Konfigurasi di DuTrack
+
+1. Buka app → **Pengaturan → Konfigurasi Supabase**
+2. Isi **Supabase URL** dan **Anon Key**
+3. Klik **Simpan & Hubungkan**
+4. Jika berhasil muncul: `Koneksi berhasil! Tabel transactions ditemukan.`
+
+> **Catatan:** Tombol "Test Koneksi" kadang menampilkan gagal meski config benar — ini bug minor. Gunakan langsung **Simpan & Hubungkan**.
+
+---
+
+### 6. Konfigurasi Auth
+
+**Nonaktifkan konfirmasi email** (agar user bisa langsung login tanpa klik link):
+
+```
+Authentication → Sign In / Providers → Email → Confirm Email → OFF → Save
 ```
 
-## Copy:
+**Set Site URL:**
 
-### Project URL
-
-Contoh:
-
-```text
-https://xxxx.supabase.co
 ```
-
-### anon public key
-
-Key panjang diawali:
-
-```text
-eyJhbGciOi...
+Authentication → URL Configuration → Site URL
+→ https://mip-co.github.io/FinTrack/
 ```
 
 ---
 
-# 5. Konfigurasi di FinTrack
+### 7. Register & Login
 
-## Buka:
-
-```text
-Pengaturan → Konfigurasi Supabase
-```
-
-Isi:
-
-* Supabase URL
-  Bisa diambil dari:
-
-  ```text
-  Sidebar → Integration → Data API
-  ```
-
-* Anon Key
-  Bisa diambil dari:
-
-  ```text
-  Project Settings → API Keys → Legacy anon
-  ```
-
-Lalu klik:
-
-```text
-Simpan & Hubungkan
-```
-
-Jika berhasil akan muncul:
-
-```text
-Koneksi berhasil
-```
+1. Buka app → klik **Daftar**
+2. Isi email dan password → klik **Daftar Sekarang**
+3. Login dengan email dan password yang sama
+4. Data otomatis tersinkronisasi ke Supabase
 
 ---
 
-# 6. Menonaktifkan Confirm Email
+## Penggunaan
 
-Agar user bisa langsung login tanpa verifikasi email.
+### Mode Lokal (Tanpa Akun)
 
-## Masuk ke:
+Pilih **"Lanjut tanpa akun (mode lokal)"** di halaman login.
+Data tersimpan di `localStorage` browser — tidak sinkron ke cloud, bisa hilang jika cache dihapus.
 
-Authentication
-→ Sign In / Providers
-→ User Signups
+### Tambah Transaksi
 
-Cari:
+- Klik tombol **+ Transaksi** atau tekan `Ctrl+K` / `Cmd+K`
+- Isi tipe (pemasukan/pengeluaran), nominal, keterangan, kategori, tanggal
+- Upload foto struk (opsional) — tersimpan otomatis ke Supabase Storage
 
-```text
-Confirm Email
-```
+### Scan Struk OCR
 
-Lalu:
+1. Buka halaman **Scan Struk**
+2. Upload atau drag & drop foto struk
+3. App otomatis mendeteksi nominal dan tanggal
+4. Klik **Simpan Transaksi**
 
-```text
-OFF
-→ Save
-```
+Tips OCR terbaik:
+- Foto terang, teks jelas
+- Hindari blur
+- Posisi struk lurus
 
----
+### Export Laporan
 
-# 7. Mengatur Site URL
+| Format | Isi |
+|---|---|
+| **XLSX** | 6 sheet: Ringkasan, Semua Transaksi, Pemasukan, Pengeluaran, Per Kategori, Per Bulan |
+| **PDF** | Laporan lengkap: ringkasan, tabel per kategori, per bulan, daftar transaksi |
+| **LPJ Beasiswa** | 3 sheet: Dashboard, Detail Transaksi per Kategori, Tabel LPJ siap submit |
 
-## Masuk ke:
+### Export LPJ Beasiswa
 
-```text
-Authentication
-→ URL Configuration
-```
+1. Klik **Export → LPJ Beasiswa**
+2. Pilih semester (otomatis terdeteksi dari data transaksi)
+3. Isi dana beasiswa per semester (default Rp 8.400.000)
+4. Paste link bukti (GDrive / PDF laporan) — opsional
+5. Klik **Generate XLSX**
 
-Isi:
-
-```text
-Site URL
-```
-
-Dengan:
-
-```text
-https://mip-co.github.io/FinTrack/
-```
-
-Lalu:
-
-```text
-Save
-```
+File yang dihasilkan berisi:
+- **Sheet Dashboard** — KPI dana, total pengeluaran, sisa, % terpakai, tabel per kategori, ringkasan per bulan
+- **Sheet Detail Transaksi** — semua transaksi dikelompokkan per kategori, lengkap dengan keterangan item dan link struk
+- **Sheet LPJ** — format tabel LPJ standar beasiswa dengan kolom Bukti ter-merge dan link yang bisa diklik
 
 ---
 
-# 8. Register Akun FinTrack
+## Deployment (GitHub Pages)
 
-Kembali ke website FinTrack.
-
-## Klik:
-
-```text
-Daftar
-```
-
-Isi:
-
-* Email
-* Password
-
-Lalu klik:
-
-```text
-Daftar Sekarang
-```
+1. Buat repo baru di GitHub
+2. Upload `index.html`, `script.js`, `style.css`
+3. Buka **Settings → Pages → Source: Deploy from branch → main → / (root)**
+4. Tunggu beberapa menit → app live di `https://<username>.github.io/<repo-name>`
 
 ---
 
-# 9. Login
+## Catatan Teknis
 
-Setelah berhasil register:
-
-## Login menggunakan:
-
-* Email
-* Password
-
-Jika berhasil:
-
-* data otomatis tersinkronisasi ke Supabase
-* transaksi tersimpan di cloud
-* data bisa diakses antar device
-
----
-
-# 10. Catatan
-
-## Jika menggunakan:
-
-```text
-Lanjut tanpa akun (mode lokal)
-```
-
-Maka:
-
-* data hanya tersimpan di browser
-* tidak sinkron ke cloud
-* data bisa hilang jika cache browser dihapus
-
----
-
-# 11. OCR Scan Struk
-
-Untuk hasil OCR terbaik:
-
-* gunakan foto terang
-* teks struk jelas
-* hindari blur
-* posisi struk lurus
-
----
-
-# 12. Deployment
-
-FinTrack berjalan menggunakan:
-
-* HTML
-* CSS
-* Vanilla JavaScript
-* Supabase
-* GitHub Pages
-
-Tanpa backend server tambahan.
+- `script.js` harus di-load **setelah** semua library (xlsx, jsPDF, html2canvas) di akhir `</body>` — bukan di `<head>`
+- Gunakan **Chrome** untuk hasil terbaik; Edge/Firefox dengan Tracking Prevention aktif bisa mengganggu localStorage dan Supabase client
+- Warning `Multiple GoTrueClient instances` di console adalah non-fatal, tidak mempengaruhi fungsi app

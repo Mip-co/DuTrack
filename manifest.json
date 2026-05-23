@@ -1,6 +1,6 @@
 {
-  "name": "FinTrack",
-  "short_name": "FinTrack",
+  "name": "DuTrack",
+  "short_name": "DuTrack",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#0b0b18",

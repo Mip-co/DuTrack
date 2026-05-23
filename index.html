@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FinTrack — Personal Finance Tracker</title>
+  <title>DuTrack — Personal Finance Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
@@ -12,7 +12,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js"></script>
   <link rel="icon" href="icon.png">
 
   <link
@@ -39,7 +38,7 @@
   <div id="loadingScreen">
 
   <div class="loader-logo">
-    FinTrack
+    DuTrack
   </div>
 
   <div class="loader-spinner"></div>
@@ -49,7 +48,7 @@
   <!-- Auth Screen -->
   <div class="auth-screen" id="authScreen">
     <div class="auth-card">
-      <div class="auth-logo">Fin<span>Track</span></div>
+      <div class="auth-logo">Du<span>Track</span></div>
       <div class="auth-tagline">Personal finance, under control.</div>
 
       <div id="loginForm">
@@ -108,7 +107,7 @@
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
-        <div class="logo-text">Fin<span>Track</span></div>
+        <div class="logo-text">Du<span>Track</span></div>
         <div class="logo-sub">Finance Manager</div>
       </div>
       <nav class="sidebar-nav">
@@ -186,20 +185,78 @@
 
       <!-- Topbar -->
       <header class="topbar">
-        <div class="topbar-left">
-          <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
-          <div>
-            <div class="page-title" id="pageTitle">Dashboard</div>
-          </div>
-        </div>
-        <div class="topbar-right">
-          <select id="monthFilter" onchange="filterByMonth()" style="font-size:0.78rem;">
-            <option value="">Semua Bulan</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
-          <button class="btn btn-primary btn-sm" onclick="openModal()">+ Transaksi</button>
-        </div>
-      </header>
+
+  <div class="topbar-left">
+
+    <button
+      class="mobile-menu-btn"
+      onclick="toggleSidebar()"
+    >
+      ☰
+    </button>
+
+    <div>
+      <div
+        class="page-title"
+        id="pageTitle"
+      >
+        Dashboard
+      </div>
+    </div>
+
+  </div>
+
+  <div class="topbar-right">
+
+    <select
+      id="monthFilter"
+      onchange="filterByMonth()"
+      style="font-size:0.78rem;"
+    >
+      <option value="">
+        Semua Bulan
+      </option>
+    </select>
+
+    <!-- EXPORT DROPDOWN -->
+
+    <div class="export-dropdown">
+
+      <button
+        class="btn btn-ghost btn-sm"
+        onclick="toggleExportMenu(event)"
+      >
+        ⬇ Export
+      </button>
+
+      <div
+        class="export-menu"
+        id="exportMenu"
+      >
+
+        <button onclick="openLpjModal()">
+          XLSX (LPJ Beasiswa)
+        </button>
+
+        <button onclick="exportPDF()">
+          PDF
+        </button>
+
+      
+      </div>
+
+    </div>
+
+    <button
+      class="btn btn-primary btn-sm"
+      onclick="openModal()"
+    >
+      + Transaksi
+    </button>
+
+  </div>
+
+</header>
 
       <!-- DASHBOARD PAGE -->
       <div class="page active" id="page-dashboard">
@@ -568,7 +625,188 @@ create policy "Users can manage own transactions"
     </div>
   </div>
 
+  <!-- =========================================================
+     LPJ MODAL
+========================================================= -->
 
+<div
+  id="lpjModal"
+  class="modal"
+  style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:9999;
+    align-items:center;
+    justify-content:center;
+  "
+>
+
+  <div
+    style="
+      background:var(--card);
+      border-radius:20px;
+      padding:28px;
+      width:90%;
+      max-width:480px;
+      box-shadow:0 8px 40px rgba(0,0,0,0.4);
+      border:1px solid var(--border);
+    "
+  >
+
+    <h3
+      style="
+        margin:0 0 20px;
+        font-size:1.1rem;
+        color:var(--text);
+      "
+    >
+      📋 Export Laporan Beasiswa
+    </h3>
+
+    <!-- SEMESTER -->
+
+    <label
+      style="
+        font-size:0.82rem;
+        color:var(--text-muted);
+        display:block;
+        margin-bottom:6px;
+      "
+    >
+      Semester
+    </label>
+
+    <select
+      id="lpjSemester"
+      style="
+        width:100%;
+        padding:12px 14px;
+        border-radius:12px;
+        border:1px solid var(--border);
+        background:var(--bg);
+        color:var(--text);
+        font-size:0.92rem;
+        margin-bottom:16px;
+      "
+    >
+    </select>
+
+    <!-- DANA -->
+
+    <label
+      style="
+        font-size:0.82rem;
+        color:var(--text-muted);
+        display:block;
+        margin-bottom:6px;
+      "
+    >
+      Dana Beasiswa (Rp)
+    </label>
+
+    <input
+      id="lpjDana"
+      type="number"
+      value="8400000"
+      style="
+        width:100%;
+        padding:12px 14px;
+        border-radius:12px;
+        border:1px solid var(--border);
+        background:var(--bg);
+        color:var(--text);
+        font-size:0.92rem;
+        margin-bottom:16px;
+        box-sizing:border-box;
+      "
+    />
+
+    <!-- LINK -->
+
+    <label
+      style="
+        font-size:0.82rem;
+        color:var(--text-muted);
+        display:block;
+        margin-bottom:6px;
+      "
+    >
+      Link Bukti (Google Drive / PDF)
+    </label>
+
+    <input
+      id="lpjLink"
+      type="url"
+      placeholder="https://drive.google.com/..."
+      style="
+        width:100%;
+        padding:12px 14px;
+        border-radius:12px;
+        border:1px solid var(--border);
+        background:var(--bg);
+        color:var(--text);
+        font-size:0.92rem;
+        margin-bottom:22px;
+        box-sizing:border-box;
+      "
+    />
+
+    <!-- ACTION -->
+
+    <div
+      style="
+        display:flex;
+        gap:12px;
+        justify-content:flex-end;
+      "
+    >
+
+      <button
+        onclick="closeLpjModal()"
+        style="
+          padding:12px 20px;
+          border-radius:12px;
+          border:1px solid var(--border);
+          background:transparent;
+          color:var(--text-muted);
+          cursor:pointer;
+          font-size:0.92rem;
+        "
+      >
+        Batal
+      </button>
+
+      <button
+        onclick="generateBeasiswa()"
+        style="
+          padding:12px 22px;
+          border-radius:12px;
+          border:none;
+          background:linear-gradient(
+            135deg,
+            #7c6af5,
+            #9c6bff
+          );
+          color:#fff;
+          cursor:pointer;
+          font-size:0.92rem;
+          font-weight:600;
+        "
+      >
+        📥 Generate XLSX
+      </button>
+
+    </div>
+
+  </div>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="script.js"></script>
 </body>
 
 </html>
