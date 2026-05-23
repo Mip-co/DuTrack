@@ -124,11 +124,36 @@ function loginGuest() {
 }
 
 async function onLoginSuccess() {
+
   hideAuthScreen();
-  document.getElementById('logoutBtn').style.display = 'flex';
+
+  document.getElementById(
+    'logoutBtn'
+  ).style.display = 'flex';
+
+  // ===== ACCOUNT INFO =====
+
+  if (currentUser) {
+
+    document.getElementById(
+      'accountEmail'
+    ).textContent =
+      currentUser.email;
+
+    document.getElementById(
+      'accountAvatar'
+    ).textContent =
+      currentUser.email
+        .charAt(0)
+        .toUpperCase();
+  }
+
+  // ===== SYNC =====
+
   if (supabaseClient && currentUser) {
     await syncFromSupabase();
   }
+
   renderAll();
 }
 
@@ -894,7 +919,8 @@ async function insertOCRTransaction() {
     amount,
     description:
       desc || 'Pengeluaran struk',
-    category: 'Lainnya',
+    category:
+      document.getElementById('ocrCategory').value,
     date,
     receipt_url: receiptUrl
   };
@@ -905,6 +931,7 @@ async function insertOCRTransaction() {
 
   await pushToSupabase(tx);
 
+  ////Ganti Link dengan Google Apps Script masing-masing untuk menyimpan data transaksi 
   await fetch(
   'https://script.google.com/macros/s/AKfycbylgk4eBA02OYy1GdkQEioz_Pv8V7TOwUrSfwRCFCR5w5-lMpzNxPhAiVczsW0Rik5K/exec',
   {
