@@ -1084,3 +1084,21 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') closeModal();
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); openModal(); }
 });
+
+window.addEventListener(
+  'load',
+  () => {
+
+    const loader =
+      document.getElementById(
+        'loadingScreen'
+      );
+
+    loader.style.opacity = '0';
+
+    setTimeout(() => {
+      loader.remove();
+    },300);
+
+  }
+);
