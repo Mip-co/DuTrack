@@ -1,4 +1,3 @@
-
 // ============================================================
 // DuTrack - Personal Finance Tracker
 // ============================================================
@@ -220,7 +219,8 @@ async function syncFromSupabase() {
         amount: r.amount,
         description: r.description,
         category: r.category,
-        date: r.date
+        date: r.date,
+        receipt_url: r.receipt_url || null
       }));
       saveLocalData();
     }
