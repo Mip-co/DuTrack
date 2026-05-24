@@ -1156,324 +1156,324 @@ async function insertOCRTransaction() {
 // Halaman 1 : Ringkasan + tabel per kategori + per bulan
 // Halaman 2+ : Tabel semua transaksi dengan auto page break
 
-// async function exportPDF() {
+async function exportPDF() {
 
-//   const { jsPDF } = window.jspdf;
-//   const pdf = new jsPDF('p', 'mm', 'a4');
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
 
-//   const txs     = getFilteredTx();
-//   const income  = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
-//   const expense = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-//   const balance = income - expense;
-//   const savRate = income > 0 ? ((Math.max(0, balance) / income) * 100).toFixed(1) : 0;
+  const txs     = getFilteredTx();
+  const income  = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const expense = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+  const balance = income - expense;
+  const savRate = income > 0 ? ((Math.max(0, balance) / income) * 100).toFixed(1) : 0;
 
-//   // ----------------------------------------------------------
-//   // WARNA
-//   // ----------------------------------------------------------
-//   const C = {
-//     purple:  [124, 106, 245],
-//     green:   [46,  204, 142],
-//     red:     [240, 94,  106],
-//     yellow:  [245, 185, 66],
-//     dark:    [20,  20,  30],
-//     grey:    [100, 100, 120],
-//     light:   [240, 240, 248],
-//     white:   [255, 255, 255],
-//     border:  [210, 210, 220],
-//   };
+  // ----------------------------------------------------------
+  // WARNA
+  // ----------------------------------------------------------
+  const C = {
+    purple:  [124, 106, 245],
+    green:   [46,  204, 142],
+    red:     [240, 94,  106],
+    yellow:  [245, 185, 66],
+    dark:    [20,  20,  30],
+    grey:    [100, 100, 120],
+    light:   [240, 240, 248],
+    white:   [255, 255, 255],
+    border:  [210, 210, 220],
+  };
 
-//   // ----------------------------------------------------------
-//   // HELPER
-//   // ----------------------------------------------------------
-//   const W = 210; // A4 width mm
-//   const ML = 14; // margin left
-//   const MR = 14; // margin right
-//   const CW = W - ML - MR; // content width
+  // ----------------------------------------------------------
+  // HELPER
+  // ----------------------------------------------------------
+  const W = 210; // A4 width mm
+  const ML = 14; // margin left
+  const MR = 14; // margin right
+  const CW = W - ML - MR; // content width
 
-//   function setColor(rgb)   { pdf.setTextColor(...rgb); }
-//   function setFill(rgb)    { pdf.setFillColor(...rgb); }
-//   function setDraw(rgb)    { pdf.setDrawColor(...rgb); }
-//   function rect(x,y,w,h,style='F') { pdf.rect(x,y,w,h,style); }
-//   function rpFmt(n)  { return 'Rp ' + Math.round(Math.abs(n)).toLocaleString('id'); }
-//   function truncate(str, max) {
-//     if (!str) return '-';
-//     return str.length > max ? str.slice(0, max - 1) + '…' : str;
-//   }
+  function setColor(rgb)   { pdf.setTextColor(...rgb); }
+  function setFill(rgb)    { pdf.setFillColor(...rgb); }
+  function setDraw(rgb)    { pdf.setDrawColor(...rgb); }
+  function rect(x,y,w,h,style='F') { pdf.rect(x,y,w,h,style); }
+  function rpFmt(n)  { return 'Rp ' + Math.round(Math.abs(n)).toLocaleString('id'); }
+  function truncate(str, max) {
+    if (!str) return '-';
+    return str.length > max ? str.slice(0, max - 1) + '…' : str;
+  }
 
-//   // ----------------------------------------------------------
-//   // HALAMAN 1 — HEADER
-//   // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // HALAMAN 1 — HEADER
+  // ----------------------------------------------------------
 
-//   // Background strip header
-//   setFill(C.purple);
-//   rect(0, 0, W, 28);
+  // Background strip header
+  setFill(C.purple);
+  rect(0, 0, W, 28);
 
-//   // Title
-//   pdf.setFontSize(18);
-//   pdf.setFont('helvetica', 'bold');
-//   setColor(C.white);
-//   pdf.text('DuTrack — Laporan Keuangan', ML, 13);
+  // Title
+  pdf.setFontSize(18);
+  pdf.setFont('helvetica', 'bold');
+  setColor(C.white);
+  pdf.text('DuTrack — Laporan Keuangan', ML, 13);
 
-//   // Subtitle (tanggal & filter)
-//   pdf.setFontSize(8);
-//   pdf.setFont('helvetica', 'normal');
-//   setColor([210, 200, 255]);
-//   const filterLabel = filterMonth
-//     ? (() => { const [y,m] = filterMonth.split('-'); return new Date(y,m-1).toLocaleDateString('id',{month:'long',year:'numeric'}); })()
-//     : 'Semua Bulan';
-//   pdf.text(`Diekspor: ${new Date().toLocaleDateString('id',{dateStyle:'long'})}   ·   Filter: ${filterLabel}`, ML, 21);
+  // Subtitle (tanggal & filter)
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'normal');
+  setColor([210, 200, 255]);
+  const filterLabel = filterMonth
+    ? (() => { const [y,m] = filterMonth.split('-'); return new Date(y,m-1).toLocaleDateString('id',{month:'long',year:'numeric'}); })()
+    : 'Semua Bulan';
+  pdf.text(`Diekspor: ${new Date().toLocaleDateString('id',{dateStyle:'long'})}   ·   Filter: ${filterLabel}`, ML, 21);
 
-//   let y = 36;
+  let y = 36;
 
-//   // ----------------------------------------------------------
-//   // KOTAK RINGKASAN (3 kolom)
-//   // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // KOTAK RINGKASAN (3 kolom)
+  // ----------------------------------------------------------
 
-//   const boxW = (CW - 8) / 3;
-//   const boxes = [
-//     { label: 'Total Pemasukan',  value: rpFmt(income),  color: C.green,  bg: [236, 252, 245] },
-//     { label: 'Total Pengeluaran', value: rpFmt(expense), color: C.red,    bg: [254, 242, 243] },
-//     { label: 'Saldo Akhir',       value: rpFmt(balance), color: C.purple, bg: [243, 241, 255] },
-//   ];
+  const boxW = (CW - 8) / 3;
+  const boxes = [
+    { label: 'Total Pemasukan',  value: rpFmt(income),  color: C.green,  bg: [236, 252, 245] },
+    { label: 'Total Pengeluaran', value: rpFmt(expense), color: C.red,    bg: [254, 242, 243] },
+    { label: 'Saldo Akhir',       value: rpFmt(balance), color: C.purple, bg: [243, 241, 255] },
+  ];
 
-//   boxes.forEach((b, i) => {
-//     const bx = ML + i * (boxW + 4);
-//     setFill(b.bg);
-//     setDraw(C.border);
-//     pdf.roundedRect(bx, y, boxW, 20, 2, 2, 'FD');
-//     pdf.setFontSize(7);
-//     pdf.setFont('helvetica', 'normal');
-//     setColor(C.grey);
-//     pdf.text(b.label, bx + 4, y + 6);
-//     pdf.setFontSize(11);
-//     pdf.setFont('helvetica', 'bold');
-//     setColor(b.color);
-//     pdf.text(b.value, bx + 4, y + 14);
-//   });
+  boxes.forEach((b, i) => {
+    const bx = ML + i * (boxW + 4);
+    setFill(b.bg);
+    setDraw(C.border);
+    pdf.roundedRect(bx, y, boxW, 20, 2, 2, 'FD');
+    pdf.setFontSize(7);
+    pdf.setFont('helvetica', 'normal');
+    setColor(C.grey);
+    pdf.text(b.label, bx + 4, y + 6);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    setColor(b.color);
+    pdf.text(b.value, bx + 4, y + 14);
+  });
 
-//   y += 26;
+  y += 26;
 
-//   // Baris savings rate kecil
-//   pdf.setFontSize(8);
-//   pdf.setFont('helvetica', 'normal');
-//   setColor(C.grey);
-//   pdf.text(`Savings Rate: ${savRate}%   ·   Total Transaksi: ${txs.length}   ·   Pemasukan: ${txs.filter(t=>t.type==='income').length} tx   ·   Pengeluaran: ${txs.filter(t=>t.type==='expense').length} tx`, ML, y);
+  // Baris savings rate kecil
+  pdf.setFontSize(8);
+  pdf.setFont('helvetica', 'normal');
+  setColor(C.grey);
+  pdf.text(`Savings Rate: ${savRate}%   ·   Total Transaksi: ${txs.length}   ·   Pemasukan: ${txs.filter(t=>t.type==='income').length} tx   ·   Pengeluaran: ${txs.filter(t=>t.type==='expense').length} tx`, ML, y);
 
-//   y += 10;
+  y += 10;
 
-//   // ----------------------------------------------------------
-//   // SECTION: RINGKASAN PER KATEGORI
-//   // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // SECTION: RINGKASAN PER KATEGORI
+  // ----------------------------------------------------------
 
-//   const expTxs = txs.filter(t => t.type === 'expense');
-//   const catMap = {};
-//   expTxs.forEach(t => {
-//     const c = t.category || 'Lainnya';
-//     if (!catMap[c]) catMap[c] = { total: 0, count: 0 };
-//     catMap[c].total += t.amount;
-//     catMap[c].count += 1;
-//   });
-//   const totalExp = Object.values(catMap).reduce((s,v) => s + v.total, 0);
-//   const catEntries = Object.entries(catMap).sort((a,b) => b[1].total - a[1].total);
+  const expTxs = txs.filter(t => t.type === 'expense');
+  const catMap = {};
+  expTxs.forEach(t => {
+    const c = t.category || 'Lainnya';
+    if (!catMap[c]) catMap[c] = { total: 0, count: 0 };
+    catMap[c].total += t.amount;
+    catMap[c].count += 1;
+  });
+  const totalExp = Object.values(catMap).reduce((s,v) => s + v.total, 0);
+  const catEntries = Object.entries(catMap).sort((a,b) => b[1].total - a[1].total);
 
-//   if (catEntries.length) {
-//     // Section title
-//     pdf.setFontSize(10);
-//     pdf.setFont('helvetica', 'bold');
-//     setColor(C.dark);
-//     pdf.text('Pengeluaran per Kategori', ML, y);
-//     y += 5;
+  if (catEntries.length) {
+    // Section title
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    setColor(C.dark);
+    pdf.text('Pengeluaran per Kategori', ML, y);
+    y += 5;
 
-//     // Table header
-//     setFill(C.purple);
-//     rect(ML, y, CW, 6);
-//     pdf.setFontSize(7.5);
-//     pdf.setFont('helvetica', 'bold');
-//     setColor(C.white);
-//     pdf.text('Kategori',           ML + 2, y + 4.2);
-//     pdf.text('Jml Tx',             ML + 60, y + 4.2);
-//     pdf.text('Total',              ML + 90, y + 4.2);
-//     pdf.text('%',                  ML + 135, y + 4.2);
-//     y += 6;
+    // Table header
+    setFill(C.purple);
+    rect(ML, y, CW, 6);
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    setColor(C.white);
+    pdf.text('Kategori',           ML + 2, y + 4.2);
+    pdf.text('Jml Tx',             ML + 60, y + 4.2);
+    pdf.text('Total',              ML + 90, y + 4.2);
+    pdf.text('%',                  ML + 135, y + 4.2);
+    y += 6;
 
-//     catEntries.forEach(([cat, v], i) => {
-//       const bg = i % 2 === 0 ? C.white : C.light;
-//       setFill(bg);
-//       rect(ML, y, CW, 5.5);
-//       pdf.setFontSize(7.5);
-//       pdf.setFont('helvetica', 'normal');
-//       setColor(C.dark);
-//       pdf.text(truncate(cat, 28),   ML + 2, y + 3.8);
-//       pdf.text(String(v.count),     ML + 60, y + 3.8);
-//       pdf.text(rpFmt(v.total),      ML + 90, y + 3.8);
-//       const pct = totalExp > 0 ? ((v.total / totalExp) * 100).toFixed(1) + '%' : '-';
-//       pdf.text(pct,                 ML + 135, y + 3.8);
-//       y += 5.5;
-//     });
+    catEntries.forEach(([cat, v], i) => {
+      const bg = i % 2 === 0 ? C.white : C.light;
+      setFill(bg);
+      rect(ML, y, CW, 5.5);
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'normal');
+      setColor(C.dark);
+      pdf.text(truncate(cat, 28),   ML + 2, y + 3.8);
+      pdf.text(String(v.count),     ML + 60, y + 3.8);
+      pdf.text(rpFmt(v.total),      ML + 90, y + 3.8);
+      const pct = totalExp > 0 ? ((v.total / totalExp) * 100).toFixed(1) + '%' : '-';
+      pdf.text(pct,                 ML + 135, y + 3.8);
+      y += 5.5;
+    });
 
-//     y += 6;
-//   }
+    y += 6;
+  }
 
-//   // ----------------------------------------------------------
-//   // SECTION: RINGKASAN PER BULAN
-//   // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // SECTION: RINGKASAN PER BULAN
+  // ----------------------------------------------------------
 
-//   const months = getLast6Months().reverse();
-//   const monthData = months.map(m => {
-//     const mTxs  = transactions.filter(t => t.date && t.date.startsWith(m));
-//     const mInc  = mTxs.filter(t => t.type==='income').reduce((s,t)=>s+t.amount,0);
-//     const mExp  = mTxs.filter(t => t.type==='expense').reduce((s,t)=>s+t.amount,0);
-//     const mBal  = mInc - mExp;
-//     const [yr, mo] = m.split('-');
-//     return {
-//       label:   new Date(yr, mo-1).toLocaleDateString('id',{month:'short',year:'2-digit'}),
-//       income:  mInc,
-//       expense: mExp,
-//       balance: mBal,
-//     };
-//   }).filter(r => r.income > 0 || r.expense > 0);
+  const months = getLast6Months().reverse();
+  const monthData = months.map(m => {
+    const mTxs  = transactions.filter(t => t.date && t.date.startsWith(m));
+    const mInc  = mTxs.filter(t => t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const mExp  = mTxs.filter(t => t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const mBal  = mInc - mExp;
+    const [yr, mo] = m.split('-');
+    return {
+      label:   new Date(yr, mo-1).toLocaleDateString('id',{month:'short',year:'2-digit'}),
+      income:  mInc,
+      expense: mExp,
+      balance: mBal,
+    };
+  }).filter(r => r.income > 0 || r.expense > 0);
 
-//   if (monthData.length) {
-//     if (y > 240) { pdf.addPage(); y = 16; }
+  if (monthData.length) {
+    if (y > 240) { pdf.addPage(); y = 16; }
 
-//     pdf.setFontSize(10);
-//     pdf.setFont('helvetica', 'bold');
-//     setColor(C.dark);
-//     pdf.text('Ringkasan per Bulan (6 Bulan Terakhir)', ML, y);
-//     y += 5;
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'bold');
+    setColor(C.dark);
+    pdf.text('Ringkasan per Bulan (6 Bulan Terakhir)', ML, y);
+    y += 5;
 
-//     // Table header
-//     setFill(C.purple);
-//     rect(ML, y, CW, 6);
-//     pdf.setFontSize(7.5);
-//     pdf.setFont('helvetica', 'bold');
-//     setColor(C.white);
-//     pdf.text('Bulan',      ML + 2,  y + 4.2);
-//     pdf.text('Pemasukan',  ML + 40, y + 4.2);
-//     pdf.text('Pengeluaran',ML + 90, y + 4.2);
-//     pdf.text('Saldo',      ML + 140, y + 4.2);
-//     y += 6;
+    // Table header
+    setFill(C.purple);
+    rect(ML, y, CW, 6);
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    setColor(C.white);
+    pdf.text('Bulan',      ML + 2,  y + 4.2);
+    pdf.text('Pemasukan',  ML + 40, y + 4.2);
+    pdf.text('Pengeluaran',ML + 90, y + 4.2);
+    pdf.text('Saldo',      ML + 140, y + 4.2);
+    y += 6;
 
-//     monthData.forEach((r, i) => {
-//       const bg = i % 2 === 0 ? C.white : C.light;
-//       setFill(bg);
-//       rect(ML, y, CW, 5.5);
-//       pdf.setFontSize(7.5);
-//       pdf.setFont('helvetica', 'normal');
-//       setColor(C.dark);
-//       pdf.text(r.label,         ML + 2,  y + 3.8);
-//       setColor(C.green);
-//       pdf.text(rpFmt(r.income), ML + 40, y + 3.8);
-//       setColor(C.red);
-//       pdf.text(rpFmt(r.expense),ML + 90, y + 3.8);
-//       setColor(r.balance >= 0 ? C.green : C.red);
-//       pdf.text(rpFmt(r.balance),ML + 140, y + 3.8);
-//       y += 5.5;
-//     });
-//   }
+    monthData.forEach((r, i) => {
+      const bg = i % 2 === 0 ? C.white : C.light;
+      setFill(bg);
+      rect(ML, y, CW, 5.5);
+      pdf.setFontSize(7.5);
+      pdf.setFont('helvetica', 'normal');
+      setColor(C.dark);
+      pdf.text(r.label,         ML + 2,  y + 3.8);
+      setColor(C.green);
+      pdf.text(rpFmt(r.income), ML + 40, y + 3.8);
+      setColor(C.red);
+      pdf.text(rpFmt(r.expense),ML + 90, y + 3.8);
+      setColor(r.balance >= 0 ? C.green : C.red);
+      pdf.text(rpFmt(r.balance),ML + 140, y + 3.8);
+      y += 5.5;
+    });
+  }
 
-//   // ----------------------------------------------------------
-//   // HALAMAN BARU — TABEL SEMUA TRANSAKSI
-//   // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // HALAMAN BARU — TABEL SEMUA TRANSAKSI
+  // ----------------------------------------------------------
 
-//   if (!txs.length) {
-//     pdf.save(`DuTrack_${new Date().toISOString().split('T')[0]}.pdf`);
-//     showToast('PDF berhasil diexport!', 'success');
-//     return;
-//   }
+  if (!txs.length) {
+    pdf.save(`DuTrack_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast('PDF berhasil diexport!', 'success');
+    return;
+  }
 
-//   pdf.addPage();
-//   y = 16;
+  pdf.addPage();
+  y = 16;
 
-//   // Section title
-//   pdf.setFontSize(13);
-//   pdf.setFont('helvetica', 'bold');
-//   setColor(C.dark);
-//   pdf.text('Daftar Transaksi', ML, y);
-//   y += 7;
+  // Section title
+  pdf.setFontSize(13);
+  pdf.setFont('helvetica', 'bold');
+  setColor(C.dark);
+  pdf.text('Daftar Transaksi', ML, y);
+  y += 7;
 
-//   // Kolom: Tanggal | Tipe | Keterangan | Kategori | Nominal
-//   const cols = [
-//     { label: 'Tanggal',    x: ML,       w: 24 },
-//     { label: 'Tipe',       x: ML + 24,  w: 20 },
-//     { label: 'Keterangan', x: ML + 44,  w: 62 },
-//     { label: 'Kategori',   x: ML + 106, w: 38 },
-//     { label: 'Nominal',    x: ML + 144, w: 38 },
-//   ];
+  // Kolom: Tanggal | Tipe | Keterangan | Kategori | Nominal
+  const cols = [
+    { label: 'Tanggal',    x: ML,       w: 24 },
+    { label: 'Tipe',       x: ML + 24,  w: 20 },
+    { label: 'Keterangan', x: ML + 44,  w: 62 },
+    { label: 'Kategori',   x: ML + 106, w: 38 },
+    { label: 'Nominal',    x: ML + 144, w: 38 },
+  ];
 
-//   function drawTableHeader() {
-//     setFill(C.purple);
-//     rect(ML, y, CW, 6.5);
-//     pdf.setFontSize(7.5);
-//     pdf.setFont('helvetica', 'bold');
-//     setColor(C.white);
-//     cols.forEach(c => pdf.text(c.label, c.x + 1.5, y + 4.5));
-//     y += 6.5;
-//   }
+  function drawTableHeader() {
+    setFill(C.purple);
+    rect(ML, y, CW, 6.5);
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'bold');
+    setColor(C.white);
+    cols.forEach(c => pdf.text(c.label, c.x + 1.5, y + 4.5));
+    y += 6.5;
+  }
 
-//   drawTableHeader();
+  drawTableHeader();
 
-//   txs.forEach((tx, i) => {
-//     // Auto page break
-//     if (y > 272) {
-//       pdf.addPage();
-//       y = 16;
-//       drawTableHeader();
-//     }
+  txs.forEach((tx, i) => {
+    // Auto page break
+    if (y > 272) {
+      pdf.addPage();
+      y = 16;
+      drawTableHeader();
+    }
 
-//     const rowH = 5.5;
-//     const bg = i % 2 === 0 ? C.white : C.light;
-//     setFill(bg);
-//     rect(ML, y, CW, rowH);
+    const rowH = 5.5;
+    const bg = i % 2 === 0 ? C.white : C.light;
+    setFill(bg);
+    rect(ML, y, CW, rowH);
 
-//     pdf.setFontSize(7.5);
-//     pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'normal');
 
-//     // Tanggal
-//     setColor(C.grey);
-//     pdf.text(tx.date || '-', cols[0].x + 1.5, y + 3.8);
+    // Tanggal
+    setColor(C.grey);
+    pdf.text(tx.date || '-', cols[0].x + 1.5, y + 3.8);
 
-//     // Tipe
-//     setColor(tx.type === 'income' ? C.green : C.red);
-//     pdf.text(tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran', cols[1].x + 1.5, y + 3.8);
+    // Tipe
+    setColor(tx.type === 'income' ? C.green : C.red);
+    pdf.text(tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran', cols[1].x + 1.5, y + 3.8);
 
-//     // Keterangan
-//     setColor(C.dark);
-//     pdf.text(truncate(tx.description || '-', 34), cols[2].x + 1.5, y + 3.8);
+    // Keterangan
+    setColor(C.dark);
+    pdf.text(truncate(tx.description || '-', 34), cols[2].x + 1.5, y + 3.8);
 
-//     // Kategori
-//     setColor(C.grey);
-//     pdf.text(truncate(tx.category || '-', 20), cols[3].x + 1.5, y + 3.8);
+    // Kategori
+    setColor(C.grey);
+    pdf.text(truncate(tx.category || '-', 20), cols[3].x + 1.5, y + 3.8);
 
-//     // Nominal
-//     setColor(tx.type === 'income' ? C.green : C.red);
-//     const sign = tx.type === 'income' ? '+' : '-';
-//     pdf.text(sign + rpFmt(tx.amount), cols[4].x + 1.5, y + 3.8);
+    // Nominal
+    setColor(tx.type === 'income' ? C.green : C.red);
+    const sign = tx.type === 'income' ? '+' : '-';
+    pdf.text(sign + rpFmt(tx.amount), cols[4].x + 1.5, y + 3.8);
 
-//     y += rowH;
-//   });
+    y += rowH;
+  });
 
-//   // ----------------------------------------------------------
-//   // FOOTER setiap halaman
-//   // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // FOOTER setiap halaman
+  // ----------------------------------------------------------
 
-//   const totalPages = pdf.internal.getNumberOfPages();
-//   for (let p = 1; p <= totalPages; p++) {
-//     pdf.setPage(p);
-//     pdf.setFontSize(7.5);
-//     pdf.setFont('helvetica', 'normal');
-//     setColor(C.grey);
-//     pdf.text(`Halaman ${p} dari ${totalPages}`, ML, 290);
-//     pdf.text('Generated by DuTrack', W - MR - 34, 290);
-//   }
+  const totalPages = pdf.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    pdf.setPage(p);
+    pdf.setFontSize(7.5);
+    pdf.setFont('helvetica', 'normal');
+    setColor(C.grey);
+    pdf.text(`Halaman ${p} dari ${totalPages}`, ML, 290);
+    pdf.text('Generated by DuTrack', W - MR - 34, 290);
+  }
 
-//   // ----------------------------------------------------------
-//   // SAVE
-//   // ----------------------------------------------------------
+  // ----------------------------------------------------------
+  // SAVE
+  // ----------------------------------------------------------
 
-//   pdf.save(`DuTrack_${new Date().toISOString().split('T')[0]}.pdf`);
-//   showToast('PDF berhasil diexport!', 'success');
-// }
+  pdf.save(`DuTrack_${new Date().toISOString().split('T')[0]}.pdf`);
+  showToast('PDF berhasil diexport!', 'success');
+}
 
 
  
