@@ -457,47 +457,15 @@
                 <div class="ocr-field-label">Kategori</div>
 
                   <select class="form-input" id="ocrCategory">
-
-                    <option value="Makanan & Minuman">
-                      🍜 Makanan & Minuman
-                    </option>
-
-                    <option value="Transport">
-                      🚗 Transport
-                    </option>
-
-                    <option value="Belanja">
-                      🛍️ Belanja
-                    </option>
-
-                    <option value="Hiburan">
-                      🎮 Hiburan
-                    </option>
-
-                    <option value="Kesehatan">
-                      💊 Kesehatan
-                    </option>
-
-                    <option value="Pendidikan">
-                      📚 Pendidikan
-                    </option>
-
-                    <option value="Tagihan & Utilitas">
-                      ⚡ Tagihan & Utilitas
-                    </option>
-
-                    <option value="Gaji">
-                      💰 Gaji
-                    </option>
-
-                    <option value="Investasi">
-                      📈 Investasi
-                    </option>
-
-                    <option value="Lainnya" selected>
-                      ◈ Lainnya
-                    </option>
-
+                    <option value="Makanan & Minuman">🍜 Makanan & Minuman</option>
+                    <option value="Transport">🚗 Transport</option>
+                    <option value="Kosan">🏠 Kosan</option>
+                    <option value="Belanja">🛍️ Belanja</option>
+                    <option value="Hiburan">🎮 Hiburan</option>
+                    <option value="Kesehatan">💊 Kesehatan</option>
+                    <option value="Pendidikan">📚 Pendidikan</option>
+                    <option value="Tagihan & Utilitas">⚡ Tagihan & Utilitas</option>
+                    <option value="Lainnya" selected>◈ Lainnya</option>
                   </select>
                 </div>
                 <input type="text" class="form-input" id="ocrDesc" placeholder="Deskripsi transaksi" />
@@ -550,6 +518,7 @@
   description text,
   category text,
   date date not null,
+  receipt_url text,
   created_at timestamptz default now()
 );
 alter table transactions enable row level security;
@@ -564,7 +533,6 @@ create policy "Users can manage own transactions"
           <div class="config-title">Data Lokal</div>
           <div class="config-sub">Kelola data yang tersimpan di browser</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
-            <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
             <button class="btn btn-danger" onclick="clearLocalData()">⊘ Hapus Data Lokal</button>
           </div>
           <div style="font-size:0.75rem;color:var(--text3);margin-top:12px;" id="localDataInfo"></div>
@@ -600,15 +568,14 @@ create policy "Users can manage own transactions"
         <div class="form-group">
           <label class="form-label">Kategori</label>
           <select id="txCat" class="form-input">
-            <option value="Makanan">🍜 Makanan & Minuman</option>
+            <option value="Makanan & Minuman">🍜 Makanan & Minuman</option>
             <option value="Transport">🚗 Transport</option>
+            <option value="Kosan">🏠 Kosan</option>
             <option value="Belanja">🛍 Belanja</option>
             <option value="Hiburan">🎮 Hiburan</option>
             <option value="Kesehatan">💊 Kesehatan</option>
             <option value="Pendidikan">📚 Pendidikan</option>
-            <option value="Tagihan">⚡ Tagihan & Utilitas</option>
-            <option value="Gaji">💰 Gaji</option>
-            <option value="Investasi">📈 Investasi</option>
+            <option value="Tagihan & Utilitas">⚡ Tagihan & Utilitas</option>
             <option value="Lainnya">◈ Lainnya</option>
           </select>
         </div>

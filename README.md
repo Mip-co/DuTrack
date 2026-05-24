@@ -1,50 +1,51 @@
-# DuTrack — Setup & Konfigurasi v2.0
+# 💰 DuTrack
 
-Aplikasi pembukuan keuangan pribadi berbasis web. Dirancang khusus untuk pencatatan pengeluaran beasiswa per semester, lengkap dengan scan struk, cloud sync, dan export laporan LPJ otomatis.
+> Aplikasi pembukuan keuangan beasiswa — catat pengeluaran, scan struk, dan generate laporan LPJ otomatis.
 
-**Website:**
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-dutrack.vercel.app-7C6AF5?style=for-the-badge)](https://dutrack.vercel.app)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
+[![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+
+---
+
+## ✨ Fitur
+
+| Fitur | Deskripsi |
+|---|---|
+| 📊 **Dashboard** | Saldo, pemasukan, pengeluaran, grafik tren & kategori |
+| 💸 **Transaksi** | Tambah, edit, hapus, filter, search, pagination |
+| 📷 **Scan Struk OCR** | Upload foto struk → auto-deteksi nominal & tanggal |
+| ☁️ **Cloud Sync** | Sinkronisasi data antar device via Supabase |
+| 📋 **Export LPJ Beasiswa** | Generate XLSX siap submit per semester otomatis |
+| 📄 **Export PDF** | Laporan lengkap dengan tabel & ringkasan |
+| 🌙 **Dark / Light Mode** | Toggle tema sesuai preferensi |
+| 🔒 **Mode Lokal** | Gunakan tanpa akun, data tersimpan di browser |
+
+---
+
+## 🛠️ Tech Stack
+
 ```
-https://mip-co.github.io/FinTrack/
+Frontend   → HTML, CSS, Vanilla JavaScript
+Charts     → Chart.js
+OCR        → Tesseract.js
+Auth & DB  → Supabase (PostgreSQL + Row Level Security)
+Storage    → Supabase Storage (foto struk)
+Export     → SheetJS (xlsx-js-style), jsPDF, html2canvas
+Hosting    → Vercel (auto-deploy dari GitHub)
 ```
 
 ---
 
-## Fitur
+## 🚀 Setup Supabase
 
-- Dashboard saldo, pemasukan, pengeluaran, dan tabungan
-- Tambah, edit, hapus transaksi dengan kategori
-- Scan struk otomatis via OCR (Tesseract.js)
-- Simpan foto struk ke Supabase Storage
-- Export XLSX multi-sheet (Ringkasan, Transaksi, Per Kategori, Per Bulan)
-- Export PDF laporan lengkap
-- **Export LPJ Beasiswa** — format tabel siap submit per semester
-- Dark mode / Light mode
-- Login & register via Supabase Auth
-- Mode lokal tanpa akun (data di browser)
-- Sinkronisasi cloud antar device
-
----
-
-## Tech Stack
-
-- HTML, CSS, Vanilla JavaScript
-- Chart.js — grafik dashboard
-- Tesseract.js — OCR scan struk
-- Supabase — Auth, Database, Storage
-- SheetJS (xlsx-js-style) — export XLSX
-- jsPDF + html2canvas — export PDF
-- GitHub Pages — hosting
-
----
-
-## Setup Supabase
+> Setiap pengguna membuat project Supabase sendiri secara gratis.
 
 ### 1. Buat Akun & Project
 
 1. Buka [supabase.com](https://supabase.com) → login / daftar
-2. Klik **New Project**
-3. Isi nama project, password database, dan region (pilih Singapore)
-4. Tunggu project selesai dibuat
+2. Klik **New Project** → isi nama, password database, region **(Singapore)**
+3. Tunggu project selesai dibuat
 
 ---
 
@@ -81,18 +82,21 @@ Jika berhasil, tabel `transactions` muncul di **Database → Tables**.
 Masuk ke **Storage → New Bucket:**
 
 - Nama bucket: `receipts`
-- Public bucket: **ON** (agar URL struk bisa diakses)
+- Public bucket: **ON**
 
-Tambahkan policy storage di **Storage → Policies → receipts:**
+Tambahkan policy di **Storage → Policies → receipts:**
 
 ```sql
--- Allow authenticated users to upload
+-- Upload
 create policy "Users can upload receipts"
   on storage.objects for insert
   to authenticated
-  with check (bucket_id = 'receipts' and auth.uid()::text = (storage.foldername(name))[1]);
+  with check (
+    bucket_id = 'receipts' and
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
 
--- Allow public read
+-- Read
 create policy "Public can view receipts"
   on storage.objects for select
   to public
@@ -103,41 +107,37 @@ create policy "Public can view receipts"
 
 ### 4. Ambil URL & Anon Key
 
-Masuk ke **Project Settings → API Keys → Legacy anon, service_role API keys:**
-
 | Field | Lokasi |
 |---|---|
-| **Project URL** | Settings → Integrations → Data API → API URL (hapus `/rest/v1/` di akhir) |
+| **Project URL** | Settings → Integrations → Data API → API URL *(hapus `/rest/v1/` di akhir)* |
 | **Anon Key** | Settings → API Keys → baris `anon public` |
 
 > ⚠️ Jangan gunakan `service_role` key di frontend.
 
 ---
 
-### 5. Konfigurasi di DuTrack
+### 5. Hubungkan ke DuTrack
 
-1. Buka app → **Pengaturan → Konfigurasi Supabase**
-2. Isi **Supabase URL** dan **Anon Key**
-3. Klik **Simpan & Hubungkan**
-4. Jika berhasil muncul: `Koneksi berhasil! Tabel transactions ditemukan.`
+1. Buka [dutrack.vercel.app](https://dutrack.vercel.app)
+2. Pergi ke **Pengaturan → Konfigurasi Supabase**
+3. Isi **Supabase URL** dan **Anon Key**
+4. Klik **Simpan & Hubungkan**
+5. Muncul ✅ `Koneksi berhasil! Tabel transactions ditemukan.`
 
-> **Catatan:** Tombol "Test Koneksi" kadang menampilkan gagal meski config benar — ini bug minor. Gunakan langsung **Simpan & Hubungkan**.
+> **Catatan:** Tombol "Test Koneksi" kadang menampilkan gagal meski config benar. Gunakan langsung **Simpan & Hubungkan**.
 
 ---
 
 ### 6. Konfigurasi Auth
 
-**Nonaktifkan konfirmasi email** (agar user bisa langsung login tanpa klik link):
-
+**Nonaktifkan konfirmasi email:**
 ```
 Authentication → Sign In / Providers → Email → Confirm Email → OFF → Save
 ```
 
 **Set Site URL:**
-
 ```
-Authentication → URL Configuration → Site URL
-→ https://mip-co.github.io/FinTrack/
+Authentication → URL Configuration → Site URL → https://dutrack.vercel.app
 ```
 
 ---
@@ -145,71 +145,71 @@ Authentication → URL Configuration → Site URL
 ### 7. Register & Login
 
 1. Buka app → klik **Daftar**
-2. Isi email dan password → klik **Daftar Sekarang**
-3. Login dengan email dan password yang sama
-4. Data otomatis tersinkronisasi ke Supabase
+2. Isi email & password → **Daftar Sekarang**
+3. Login — data otomatis tersinkronisasi ke cloud ☁️
 
 ---
 
-## Penggunaan
+## 📖 Cara Pakai
 
-### Mode Lokal (Tanpa Akun)
+### ⌨️ Shortcut
 
-Pilih **"Lanjut tanpa akun (mode lokal)"** di halaman login.
-Data tersimpan di `localStorage` browser — tidak sinkron ke cloud, bisa hilang jika cache dihapus.
+| Shortcut | Aksi |
+|---|---|
+| `Ctrl+K` / `Cmd+K` | Buka modal tambah transaksi cepat |
 
-### Tambah Transaksi
-
-- Klik tombol **+ Transaksi** atau tekan `Ctrl+K` / `Cmd+K`
-- Isi tipe (pemasukan/pengeluaran), nominal, keterangan, kategori, tanggal
-- Upload foto struk (opsional) — tersimpan otomatis ke Supabase Storage
-
-### Scan Struk OCR
+### 📷 Scan Struk OCR
 
 1. Buka halaman **Scan Struk**
-2. Upload atau drag & drop foto struk
-3. App otomatis mendeteksi nominal dan tanggal
+2. Upload / drag & drop foto struk
+3. App otomatis deteksi nominal & tanggal
 4. Klik **Simpan Transaksi**
 
-Tips OCR terbaik:
-- Foto terang, teks jelas
-- Hindari blur
-- Posisi struk lurus
+> Tips: foto terang, teks jelas, tidak blur, posisi lurus.
 
-### Export Laporan
-
-| Format | Isi |
-|---|---|
-| **XLSX** | 6 sheet: Ringkasan, Semua Transaksi, Pemasukan, Pengeluaran, Per Kategori, Per Bulan |
-| **PDF** | Laporan lengkap: ringkasan, tabel per kategori, per bulan, daftar transaksi |
-| **LPJ Beasiswa** | 3 sheet: Dashboard, Detail Transaksi per Kategori, Tabel LPJ siap submit |
-
-### Export LPJ Beasiswa
+### 📋 Export LPJ Beasiswa
 
 1. Klik **Export → LPJ Beasiswa**
-2. Pilih semester (otomatis terdeteksi dari data transaksi)
-3. Isi dana beasiswa per semester (default Rp 8.400.000)
-4. Paste link bukti (GDrive / PDF laporan) — opsional
+2. Pilih semester *(otomatis terdeteksi dari data transaksi)*
+3. Isi dana beasiswa per semester *(default Rp 8.400.000)*
+4. Paste link bukti (GDrive / PDF) — opsional
 5. Klik **Generate XLSX**
 
-File yang dihasilkan berisi:
-- **Sheet Dashboard** — KPI dana, total pengeluaran, sisa, % terpakai, tabel per kategori, ringkasan per bulan
-- **Sheet Detail Transaksi** — semua transaksi dikelompokkan per kategori, lengkap dengan keterangan item dan link struk
-- **Sheet LPJ** — format tabel LPJ standar beasiswa dengan kolom Bukti ter-merge dan link yang bisa diklik
+File hasil export berisi **3 sheet:**
+
+| Sheet | Isi |
+|---|---|
+| 📊 Dashboard | KPI dana, tabel per kategori, ringkasan per bulan |
+| 📂 Detail Transaksi | Semua transaksi per kategori + keterangan item + link struk |
+| 📋 LPJ | Tabel LPJ format beasiswa, kolom bukti ter-merge + link |
+
+### 🗂️ Mode Lokal
+
+Pilih **"Lanjut tanpa akun"** di halaman login.
+Data tersimpan di `localStorage` — tidak sinkron ke cloud, bisa hilang jika cache dihapus.
 
 ---
 
-## Deployment (GitHub Pages)
-
-1. Buat repo baru di GitHub
-2. Upload `index.html`, `script.js`, `style.css`
-3. Buka **Settings → Pages → Source: Deploy from branch → main → / (root)**
-4. Tunggu beberapa menit → app live di `https://<username>.github.io/<repo-name>`
-
----
-
-## Catatan Teknis
+## ⚙️ Catatan Teknis
 
 - `script.js` harus di-load **setelah** semua library (xlsx, jsPDF, html2canvas) di akhir `</body>` — bukan di `<head>`
 - Gunakan **Chrome** untuk hasil terbaik; Edge/Firefox dengan Tracking Prevention aktif bisa mengganggu localStorage dan Supabase client
 - Warning `Multiple GoTrueClient instances` di console adalah non-fatal, tidak mempengaruhi fungsi app
+- Project Supabase **otomatis pause** setelah 7 hari tidak ada aktivitas — resume manual lewat dashboard
+
+---
+
+## 📦 Struktur File
+
+```
+DuTrack/
+├── index.html          # App utama (single-file)
+├── script.js           # Semua logika & fungsi
+├── style.css           # Styling & tema
+├── icon.png            # App icon
+└── README.md           # Dokumentasi ini
+```
+
+---
+
+*Made with ☕ for beasiswa reporting · Deployed on [Vercel](https://vercel.com) · Backend by [Supabase](https://supabase.com)*
