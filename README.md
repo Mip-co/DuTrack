@@ -1,11 +1,10 @@
 # 💰 DuTrack
 
 > Aplikasi pembukuan keuangan beasiswa — catat pengeluaran, scan struk, dan generate laporan LPJ otomatis.
-
-**Website:**
-```
-https://mip-co.github.io/FinTrack/
-```
+ 
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-dutrack.vercel.app-7C6AF5?style=for-the-badge)](https://dutrack.vercel.app)
+[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
+[![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
 
 ---
 
