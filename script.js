@@ -1706,7 +1706,7 @@ function _buildSheetDashboard(wb, txs, catTotals, catCounts, totalSpent, dana, s
     ['Sisa Dana',       rpFmt(sisa),         '2ECC8E'],
     ['% Terpakai',      pct,                 'F5B942'],
   ];
-  const kpiCols = [1, 2, 4, 5];
+  const kpiCols = [1, 2, 3, 4];
   kpis.forEach((k, i) => {
     ws[_addr(row, kpiCols[i])] = _cell(
       `${k[0]}\n${k[1]}`, true, 13, 'FFFFFF', k[2], 'center', 'center', true
@@ -1853,11 +1853,14 @@ function _buildSheetDetail(wb, txs, catTotals, semLabel) {
       ws[_addr(row,3)] = _cell(tx.category || '-',           false, 9, '2D2D4E', bg, 'left',   'center');
       ws[_addr(row,4)] = _cell(tx.description || '-',        false, 9, '2D2D4E', bg, 'left',   'center');
       ws[_addr(row,5)] = _cell(rpFmt(tx.amount),             false, 9, '2D2D4E', bg, 'right',  'center');
-      // Link struk — biru jika ada
-      const linkVal = tx.receipt_url || '-';
-      ws[_addr(row,6)] = _cell(linkVal, false, 9,
-        tx.receipt_url ? '0563C1' : 'A8A8C8', bg, 'left', 'center');
-      if (tx.receipt_url) ws[_addr(row,6)].l = { Target: tx.receipt_url };
+      // Link struk — clickable hyperlink jika ada
+      if (tx.receipt_url) {
+        ws[_addr(row,6)] = _cell('📎 Lihat Struk', false, 9, '0563C1', bg, 'left', 'center');
+        ws[_addr(row,6)].s.font.underline = true;
+        ws[_addr(row,6)].l = { Target: tx.receipt_url, Tooltip: tx.receipt_url };
+      } else {
+        ws[_addr(row,6)] = _cell('-', false, 9, 'A8A8C8', bg, 'left', 'center');
+      }
       row++;
     });
  
