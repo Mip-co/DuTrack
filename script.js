@@ -8,7 +8,9 @@ let currentPage = 1;
 const PER_PAGE = 10;
 let currentType = 'income';
 let editingId = null;
-let filterMonth = '';
+let filterMonth = '';      // kept for internal range filtering
+let activeSemester = null; // { id, number, label, start_month, end_month }
+let semesters = [];        // list of all semesters
 let supabaseClient = null;
 let currentUser = null;
 let isGuest = false;
@@ -40,7 +42,6 @@ let SUPABASE_KEY = localStorage.getItem('ft_supabase_key') || '';
 // ===== INIT =====
 document.addEventListener('DOMContentLoaded', () => {
   loadLocalData();
-  initMonthFilter();
   checkAuth();
   setDefaultDate();
   updateLocalDataInfo();
@@ -141,36 +142,35 @@ function loginGuest() {
 }
 
 async function onLoginSuccess() {
-
   hideAuthScreen();
 
-  document.getElementById(
-    'logoutBtn'
-  ).style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'flex';
 
   // ===== ACCOUNT INFO =====
-
   if (currentUser) {
+    const email  = currentUser.email;
+    const avatar = email.charAt(0).toUpperCase();
 
-    document.getElementById(
-      'accountEmail'
-    ).textContent =
-      currentUser.email;
+    document.getElementById('accountEmail').textContent  = email;
+    document.getElementById('accountAvatar').textContent = avatar;
 
-    document.getElementById(
-      'accountAvatar'
-    ).textContent =
-      currentUser.email
-        .charAt(0)
-        .toUpperCase();
+    // Mobile panel
+    const mEmail  = document.getElementById('accountEmailMobile');
+    const mAvatar = document.getElementById('accountAvatarMobile');
+    if (mEmail)  mEmail.textContent  = email;
+    if (mAvatar) mAvatar.textContent = avatar;
   }
 
-  // ===== SYNC =====
+  // Mobile logout btn
+  const mLogout = document.getElementById('logoutBtnMobile');
+  if (mLogout) mLogout.style.display = 'flex';
 
+  // ===== SYNC =====
   if (supabaseClient && currentUser) {
     await syncFromSupabase();
   }
 
+  await loadSemesters();
   renderAll();
 }
 
@@ -181,6 +181,8 @@ async function handleLogout() {
   currentUser = null;
   isGuest = false;
   document.getElementById('logoutBtn').style.display = 'none';
+  const mLogout = document.getElementById('logoutBtnMobile');
+  if (mLogout) mLogout.style.display = 'none';
   showAuthScreen();
 }
 
@@ -342,15 +344,49 @@ function generateId() {
 // ===== FILTER =====
 function getFilteredTx() {
   let txs = [...transactions];
-  if (filterMonth) {
-    txs = txs.filter(t => t.date && t.date.startsWith(filterMonth));
+  if (activeSemester) {
+    const start = activeSemester.start_month; // "YYYY-MM"
+    const end   = activeSemester.end_month;   // "YYYY-MM"
+    txs = txs.filter(t => {
+      if (!t.date) return false;
+      const m = t.date.slice(0, 7);
+      return m >= start && m <= end;
+    });
   }
   return txs;
 }
 
-function filterByMonth() {
-  filterMonth = document.getElementById('monthFilter').value;
+function filterBySemester() {
+  const select = document.getElementById('semesterFilter');
+  const id = select.value;
+  activeSemester = semesters.find(s => s.id === id) || null;
+  currentPage = 1;
   renderAll();
+}
+
+// ===== SEMESTER FILTER UI =====
+function initSemesterFilter() {
+  const select = document.getElementById('semesterFilter');
+  if (!semesters.length) {
+    select.innerHTML = '<option value="">Belum ada semester</option>';
+    activeSemester = null;
+    return;
+  }
+  const sorted = [...semesters].sort((a,b) => b.number - a.number);
+  select.innerHTML = sorted.map(s =>
+    `<option value="${s.id}">${s.label || 'Semester ' + s.number} (${fmtMonth(s.start_month)}–${fmtMonth(s.end_month)})</option>`
+  ).join('');
+  // Default ke semester terbaru jika belum ada pilihan aktif
+  if (!activeSemester || !semesters.find(s => s.id === activeSemester.id)) {
+    activeSemester = sorted[0];
+  }
+  select.value = activeSemester.id;
+}
+
+function fmtMonth(ym) {
+  if (!ym) return '';
+  const [y, m] = ym.split('-');
+  return new Date(y, m-1).toLocaleDateString('id', { month: 'short', year: '2-digit' });
 }
 
 // ===== RENDER ALL =====
@@ -358,11 +394,11 @@ function renderAll() {
   updateStats();
   renderRecentTx();
   renderTransactions();
-  renderCharts();
   renderAnalytics();
   renderMonthlyTable();
   updateCategoryFilter();
-  initMonthFilter();
+  initSemesterFilter();
+  setTimeout(() => renderCharts(), 80);
 }
 
 // ===== STATS =====
@@ -371,17 +407,35 @@ function updateStats() {
   const income = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
   const expense = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
   const balance = income - expense;
-  const savings = income > 0 ? income - expense : 0;
-  const savingsRate = income > 0 ? ((savings / income) * 100).toFixed(1) : 0;
 
   document.getElementById('totalBalance').textContent = formatRp(balance);
   document.getElementById('totalIncome').textContent = formatRp(income);
   document.getElementById('totalExpense').textContent = formatRp(expense);
-  document.getElementById('totalSavings').textContent = formatRp(savings < 0 ? 0 : savings);
   document.getElementById('incomeCount').textContent = `${txs.filter(t=>t.type==='income').length} transaksi`;
   document.getElementById('expenseCount').textContent = `${txs.filter(t=>t.type==='expense').length} transaksi`;
-  document.getElementById('savingsRate').textContent = `${savingsRate}% dari pemasukan`;
-  document.getElementById('balanceChange').textContent = balance >= 0 ? '▲ Positif' : '▼ Defisit';
+
+  const balEl = document.getElementById('balanceChange');
+  if (balEl) {
+    balEl.className = `badge ${balance >= 0 ? 'up' : 'down'}`;
+    balEl.textContent = balance >= 0 ? '▲ Positif' : '▼ Defisit';
+  }
+
+  // Scholarship Monitoring — pakai total pengeluaran vs dana beasiswa
+  const DANA_BEASISWA = 8400000;
+  const pct = Math.min(100, Math.round((expense / DANA_BEASISWA) * 100));
+  const sisa = Math.max(0, DANA_BEASISWA - expense);
+
+  const pctEl  = document.getElementById('scholarshipPct');
+  const barEl  = document.getElementById('scholarshipBar');
+  const usedEl = document.getElementById('scholarshipUsed');
+  const totEl  = document.getElementById('scholarshipTotal');
+  const sisaEl = document.getElementById('scholarshipSisa');
+
+  if (pctEl)  pctEl.textContent  = `${pct}%`;
+  if (barEl)  barEl.style.width  = `${pct}%`;
+  if (usedEl) usedEl.textContent = formatRp(expense);
+  if (totEl)  totEl.textContent  = formatRp(DANA_BEASISWA);
+  if (sisaEl) sisaEl.textContent = formatRp(sisa);
 }
 
 // ===== RECENT TX =====
@@ -524,12 +578,12 @@ function renderCategoryChart() {
     return;
   }
   charts.category = new Chart(ctx, {
-    type: 'doughnut',
+    type: 'pie',
     data: { labels, datasets: [{ data, backgroundColor: colors.slice(0, labels.length), borderColor: 'transparent', hoverOffset: 6 }] },
     options: {
-      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#9090a8', font: { family: 'DM Mono', size: 10 }, padding: 10, boxWidth: 10 } },
+        legend: { position: 'bottom', labels: { color: '#9090a8', font: { family: 'JetBrains Mono', size: 10 }, padding: 10, boxWidth: 10 } },
         tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${formatRp(ctx.raw)}` } }
       }
     }
@@ -635,16 +689,123 @@ function renderMonthlyTable() {
 }
 
 // ===== MONTH FILTER =====
-function initMonthFilter() {
-  const select = document.getElementById('monthFilter');
-  const current = select.value;
-  const months = getLast12Months();
-  select.innerHTML = '<option value="">Semua Bulan</option>' +
-    months.map(m => {
-      const [y,mo] = m.split('-');
-      const label = new Date(y,mo-1).toLocaleDateString('id',{month:'long',year:'numeric'});
-      return `<option value="${m}" ${m===current?'selected':''}>${label}</option>`;
-    }).join('');
+// ===== SEMESTER CRUD =====
+
+async function loadSemesters() {
+  if (!supabaseClient || !currentUser) {
+    semesters = JSON.parse(localStorage.getItem('ft_semesters') || '[]');
+    initSemesterFilter();
+    renderSemesterList();
+    return;
+  }
+  const { data, error } = await supabaseClient
+    .from('semesters')
+    .select('*')
+    .eq('user_id', currentUser.id)
+    .order('number', { ascending: false });
+  if (!error && data) {
+    semesters = data;
+    localStorage.setItem('ft_semesters', JSON.stringify(semesters));
+  }
+  initSemesterFilter();
+  renderSemesterList();
+}
+
+async function saveSemester() {
+  const editId   = document.getElementById('semEditId').value;
+  const number   = parseInt(document.getElementById('semNumber').value);
+  const labelVal = document.getElementById('semLabel').value.trim() || `Semester ${number}`;
+  const start    = document.getElementById('semStart').value;
+  const end      = document.getElementById('semEnd').value;
+
+  if (!number || !start || !end) { showToast('Isi nomor, bulan mulai, dan selesai', 'error'); return; }
+  if (start > end) { showToast('Bulan mulai harus sebelum bulan selesai', 'error'); return; }
+
+  if (supabaseClient && currentUser) {
+    if (editId) {
+      const { error } = await supabaseClient.from('semesters').update({
+        number, label: labelVal, start_month: start, end_month: end
+      }).eq('id', editId).eq('user_id', currentUser.id);
+      if (error) { showToast('Gagal update semester', 'error'); return; }
+    } else {
+      const { error } = await supabaseClient.from('semesters').insert({
+        user_id: currentUser.id, number, label: labelVal, start_month: start, end_month: end
+      });
+      if (error) { showToast('Gagal simpan semester', 'error'); return; }
+    }
+  } else {
+    // Guest/local mode
+    if (editId) {
+      const idx = semesters.findIndex(s => s.id === editId);
+      if (idx >= 0) semesters[idx] = { ...semesters[idx], number, label: labelVal, start_month: start, end_month: end };
+    } else {
+      semesters.push({ id: Date.now().toString(), number, label: labelVal, start_month: start, end_month: end });
+    }
+    localStorage.setItem('ft_semesters', JSON.stringify(semesters));
+  }
+
+  cancelSemesterEdit();
+  await loadSemesters();
+  renderAll();
+  showToast(editId ? 'Semester diperbarui' : 'Semester ditambahkan', 'success');
+}
+
+async function deleteSemester(id) {
+  if (!confirm('Hapus semester ini?')) return;
+  if (supabaseClient && currentUser) {
+    await supabaseClient.from('semesters').delete().eq('id', id).eq('user_id', currentUser.id);
+  } else {
+    semesters = semesters.filter(s => s.id !== id);
+    localStorage.setItem('ft_semesters', JSON.stringify(semesters));
+  }
+  if (activeSemester?.id === id) activeSemester = null;
+  await loadSemesters();
+  renderAll();
+  showToast('Semester dihapus', 'success');
+}
+
+function editSemester(id) {
+  const s = semesters.find(s => s.id === id);
+  if (!s) return;
+  document.getElementById('semEditId').value  = s.id;
+  document.getElementById('semNumber').value  = s.number;
+  document.getElementById('semLabel').value   = s.label;
+  document.getElementById('semStart').value   = s.start_month;
+  document.getElementById('semEnd').value     = s.end_month;
+  document.getElementById('semFormTitle').textContent = '✏️ Edit Semester';
+  document.getElementById('semCancelBtn').style.display = 'inline-flex';
+}
+
+function cancelSemesterEdit() {
+  document.getElementById('semEditId').value  = '';
+  document.getElementById('semNumber').value  = '';
+  document.getElementById('semLabel').value   = '';
+  document.getElementById('semStart').value   = '';
+  document.getElementById('semEnd').value     = '';
+  document.getElementById('semFormTitle').textContent = '+ Tambah Semester';
+  document.getElementById('semCancelBtn').style.display = 'none';
+}
+
+function renderSemesterList() {
+  const el = document.getElementById('semesterList');
+  if (!el) return;
+  if (!semesters.length) {
+    el.innerHTML = '<div style="font-size:0.75rem;color:var(--text3);padding:8px 0;">Belum ada semester. Tambahkan semester pertama kamu.</div>';
+    return;
+  }
+  const sorted = [...semesters].sort((a,b) => b.number - a.number);
+  el.innerHTML = sorted.map(s => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 13px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);">
+      <div>
+        <div style="font-size:0.83rem;font-weight:600;color:var(--text)">${s.label || 'Semester ' + s.number}</div>
+        <div style="font-size:0.7rem;color:var(--text3);margin-top:2px;">${fmtMonth(s.start_month)} – ${fmtMonth(s.end_month)}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="icon-btn" onclick="editSemester('${s.id}')">✏</button>
+        <button class="icon-btn danger" onclick="deleteSemester('${s.id}')">✕</button>
+      </div>
+    </div>
+  `).join('');
 }
 
 function updateCategoryFilter() {
@@ -659,17 +820,28 @@ function updateCategoryFilter() {
 function navigate(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+
   const pageEl = document.getElementById('page-' + page);
   if (pageEl) pageEl.classList.add('active');
+
   const titles = { dashboard: 'Dashboard', transactions: 'Transaksi', analytics: 'Analitik', scanner: 'Scan Struk', settings: 'Pengaturan' };
   document.getElementById('pageTitle').textContent = titles[page] || page;
+
+  // Sidebar nav active
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.textContent.trim().toLowerCase().includes(page === 'dashboard' ? 'dashboard' : page === 'scanner' ? 'scan' : page)) {
       n.classList.add('active');
     }
   });
+
+  // Bottom nav active
+  const bnavEl = document.getElementById('bnav-' + page);
+  if (bnavEl) bnavEl.classList.add('active');
+
   closeSidebar();
-  if (page === 'analytics') { renderAnalytics(); renderMonthlyTable(); }
+  if (page === 'dashboard')   { setTimeout(() => renderCharts(), 80); }
+  if (page === 'analytics')   { renderAnalytics(); renderMonthlyTable(); }
   if (page === 'settings') {
     document.getElementById('cfgUrl').value = SUPABASE_URL;
     document.getElementById('cfgKey').value = SUPABASE_KEY;
@@ -694,6 +866,10 @@ function toggleTheme() {
   html.setAttribute('data-theme', isDark ? 'light' : 'dark');
   document.getElementById('themeIcon').textContent = isDark ? '☽' : '☀';
   document.getElementById('themeLabel').textContent = isDark ? 'Mode Gelap' : 'Mode Terang';
+  const mIcon  = document.getElementById('themeIconMobile');
+  const mLabel = document.getElementById('themeLabelMobile');
+  if (mIcon)  mIcon.textContent  = isDark ? '☽' : '☀';
+  if (mLabel) mLabel.textContent = isDark ? 'Mode Gelap' : 'Mode Terang';
   localStorage.setItem('ft_theme', isDark ? 'light' : 'dark');
   setTimeout(() => renderCharts(), 100);
 }
@@ -705,6 +881,10 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', saved);
     document.getElementById('themeIcon').textContent = saved === 'light' ? '☽' : '☀';
     document.getElementById('themeLabel').textContent = saved === 'light' ? 'Mode Gelap' : 'Mode Terang';
+    const mIcon  = document.getElementById('themeIconMobile');
+    const mLabel = document.getElementById('themeLabelMobile');
+    if (mIcon)  mIcon.textContent  = saved === 'light' ? '☽' : '☀';
+    if (mLabel) mLabel.textContent = saved === 'light' ? 'Mode Gelap' : 'Mode Terang';
   }
 })();
 
@@ -1481,111 +1661,49 @@ async function exportPDF() {
 // ===== MODAL CONTROL ========================================
 
 function openLpjModal() {
- 
-  // Populate semester options dari data transaksi yang ada
-  const semesterSelect = document.getElementById('lpjSemester');
-  semesterSelect.innerHTML = '';
- 
-  const monthsAvail = [...new Set(
-    transactions
-      .filter(t => t.type === 'expense' && t.date)
-      .map(t => t.date.slice(0, 7))
-  )].sort();
- 
-  if (!monthsAvail.length) {
-    showToast('Belum ada transaksi pengeluaran', 'info');
+  if (!activeSemester) {
+    showToast('Pilih semester dulu di dropdown atas', 'error');
     return;
   }
- 
-  // Build semester options (6-month groups)
-  const semesterOptions = buildSemesterOptions(monthsAvail);
-  semesterOptions.forEach(opt => {
-    const el = document.createElement('option');
-    el.value = JSON.stringify(opt.months);
-    el.textContent = opt.label;
-    semesterSelect.appendChild(el);
-  });
- 
-  // Tambah opsi "Semua data"
-  const allOpt = document.createElement('option');
-  allOpt.value = JSON.stringify(monthsAvail);
-  allOpt.textContent = `Semua Data (${monthsAvail.length} bulan)`;
-  semesterSelect.appendChild(allOpt);
- 
+
+  // Pre-fill semester info di modal
+  const semLabel = activeSemester.label || `Semester ${activeSemester.number}`;
+  const semRange = `${fmtMonth(activeSemester.start_month)} – ${fmtMonth(activeSemester.end_month)}`;
+  const semInfoEl = document.getElementById('lpjSemesterInfo');
+  if (semInfoEl) semInfoEl.textContent = `${semLabel} (${semRange})`;
+
   document.getElementById('lpjModal').style.display = 'flex';
 }
- 
+
 function closeLpjModal() {
   document.getElementById('lpjModal').style.display = 'none';
 }
- 
-function buildSemesterOptions(months) {
-  // Kelompokkan per 6 bulan
-  const options = [];
-  const semLabels = {
-    '01': 'Genap', '02': 'Genap', '03': 'Genap', '04': 'Genap',
-    '05': 'Genap', '06': 'Genap',
-    '07': 'Ganjil', '08': 'Ganjil', '09': 'Ganjil', '10': 'Ganjil',
-    '11': 'Ganjil', '12': 'Ganjil',
-  };
-  const monthNames = {
-    '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'Mei','06':'Jun',
-    '07':'Jul','08':'Agu','09':'Sep','10':'Okt','11':'Nov','12':'Des',
-  };
- 
-  // Group by semester (Ganjil = Jul-Des, Genap = Jan-Jun)
-  const semGroups = {};
-  months.forEach(m => {
-    const [y, mo] = m.split('-');
-    const sem = semLabels[mo];
-    const key = sem === 'Ganjil' ? `${y}-Ganjil` : `${y}-Genap`;
-    if (!semGroups[key]) semGroups[key] = [];
-    semGroups[key].push(m);
-  });
- 
-  Object.entries(semGroups).sort().forEach(([key, mths]) => {
-    const [y, sem] = key.split('-');
-    const first = mths[0];
-    const last  = mths[mths.length - 1];
-    const [, fm] = first.split('-');
-    const [ly, lm] = last.split('-');
-    options.push({
-      label: `Semester ${sem} ${y} (${monthNames[fm]} – ${monthNames[lm]} ${ly})`,
-      months: mths,
-    });
-  });
- 
-  return options;
-}
- 
- 
-// ===== MAIN EXPORT FUNCTION =================================
- 
+
+// ===== MAIN EXPORT FUNCTION =====
 function generateBeasiswa() {
- 
-  const semVal  = document.getElementById('lpjSemester').value;
-  const dana    = parseFloat(document.getElementById('lpjDana').value) || 8400000;
-  const buktiLink = document.getElementById('lpjLink').value.trim();
- 
-  if (!semVal) {
+  if (!activeSemester) {
     showToast('Pilih semester dulu', 'error');
     return;
   }
- 
-  const selectedMonths = JSON.parse(semVal);
- 
-  // Filter transaksi: expense saja, bulan yang dipilih
-  const txs = transactions.filter(t =>
-    t.type === 'expense' &&
-    t.date &&
-    selectedMonths.includes(t.date.slice(0, 7))
-  );
- 
+
+  const dana      = parseFloat(document.getElementById('lpjDana').value) || 8400000;
+  const buktiLink = document.getElementById('lpjLink').value.trim();
+
+  const start = activeSemester.start_month;
+  const end   = activeSemester.end_month;
+
+  // Filter transaksi: expense saja, dalam range semester aktif
+  const txs = transactions.filter(t => {
+    if (t.type !== 'expense' || !t.date) return false;
+    const m = t.date.slice(0, 7);
+    return m >= start && m <= end;
+  });
+
   if (!txs.length) {
-    showToast('Tidak ada data pengeluaran di periode ini', 'info');
+    showToast('Tidak ada data pengeluaran di semester ini', 'info');
     return;
   }
- 
+
   // Hitung per kategori
   const catTotals = {};
   const catCounts = {};
@@ -1594,30 +1712,33 @@ function generateBeasiswa() {
     catTotals[c] = (catTotals[c] || 0) + t.amount;
     catCounts[c] = (catCounts[c] || 0) + 1;
   });
- 
-  const totalSpent = txs.reduce((s, t) => s + t.amount, 0);
- 
-  // Bulan label untuk title
-  const sortedMonths = [...selectedMonths].sort();
-  const semesterLabel = buildSemesterLabel(sortedMonths);
- 
-  // Build workbook
+
+  const totalSpent    = txs.reduce((s, t) => s + t.amount, 0);
+  const semesterLabel = activeSemester.label || `Semester ${activeSemester.number}`;
+
+  // Build months array dalam range untuk chart per bulan
+  const months = [];
+  let cur = start;
+  while (cur <= end) {
+    months.push(cur);
+    const [y, m] = cur.split('-').map(Number);
+    const next = m === 12 ? `${y+1}-01` : `${y}-${String(m+1).padStart(2,'0')}`;
+    cur = next;
+  }
+
   const wb = XLSX.utils.book_new();
- 
-  _buildSheetDashboard(wb, txs, catTotals, catCounts, totalSpent, dana, semesterLabel, sortedMonths);
+  _buildSheetDashboard(wb, txs, catTotals, catCounts, totalSpent, dana, semesterLabel, months);
   _buildSheetDetail(wb, txs, catTotals, semesterLabel);
   _buildSheetLPJ(wb, catTotals, totalSpent, dana, buktiLink, semesterLabel);
- 
+
   const filename = `DuTrack_LPJ_${semesterLabel.replace(/\s+/g,'-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
   XLSX.writeFile(wb, filename);
- 
+
   closeLpjModal();
   showToast('📋 LPJ Beasiswa berhasil diexport!', 'success');
 }
- 
- 
-// ===== HELPERS ==============================================
- 
+
+
 function buildSemesterLabel(months) {
   const names = {
     '01':'Jan','02':'Feb','03':'Mar','04':'Apr','05':'Mei','06':'Jun',
@@ -1706,7 +1827,7 @@ function _buildSheetDashboard(wb, txs, catTotals, catCounts, totalSpent, dana, s
     ['Sisa Dana',       rpFmt(sisa),         '2ECC8E'],
     ['% Terpakai',      pct,                 'F5B942'],
   ];
-  const kpiCols = [1, 2, 3, 4];
+  const kpiCols = [1, 2, 4, 5];
   kpis.forEach((k, i) => {
     ws[_addr(row, kpiCols[i])] = _cell(
       `${k[0]}\n${k[1]}`, true, 13, 'FFFFFF', k[2], 'center', 'center', true
@@ -1853,14 +1974,11 @@ function _buildSheetDetail(wb, txs, catTotals, semLabel) {
       ws[_addr(row,3)] = _cell(tx.category || '-',           false, 9, '2D2D4E', bg, 'left',   'center');
       ws[_addr(row,4)] = _cell(tx.description || '-',        false, 9, '2D2D4E', bg, 'left',   'center');
       ws[_addr(row,5)] = _cell(rpFmt(tx.amount),             false, 9, '2D2D4E', bg, 'right',  'center');
-      // Link struk — clickable hyperlink jika ada
-      if (tx.receipt_url) {
-        ws[_addr(row,6)] = _cell('📎 Lihat Struk', false, 9, '0563C1', bg, 'left', 'center');
-        ws[_addr(row,6)].s.font.underline = true;
-        ws[_addr(row,6)].l = { Target: tx.receipt_url, Tooltip: tx.receipt_url };
-      } else {
-        ws[_addr(row,6)] = _cell('-', false, 9, 'A8A8C8', bg, 'left', 'center');
-      }
+      // Link struk — biru jika ada
+      const linkVal = tx.receipt_url || '-';
+      ws[_addr(row,6)] = _cell(linkVal, false, 9,
+        tx.receipt_url ? '0563C1' : 'A8A8C8', bg, 'left', 'center');
+      if (tx.receipt_url) ws[_addr(row,6)].l = { Target: tx.receipt_url };
       row++;
     });
  

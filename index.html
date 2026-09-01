@@ -7,7 +7,7 @@
   <title>DuTrack — Personal Finance Tracker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
-    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
     rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -209,13 +209,11 @@
   <div class="topbar-right">
 
     <select
-      id="monthFilter"
-      onchange="filterByMonth()"
+      id="semesterFilter"
+      onchange="filterBySemester()"
       style="font-size:0.78rem;"
     >
-      <option value="">
-        Semua Bulan
-      </option>
+      <option value="">Memuat...</option>
     </select>
 
     <!-- EXPORT DROPDOWN -->
@@ -260,76 +258,87 @@
 
       <!-- DASHBOARD PAGE -->
       <div class="page active" id="page-dashboard">
-        <!-- Stats -->
-        <div class="stats-grid">
-          <div class="stat-card balance">
-            <span class="stat-icon">◈</span>
-            <div class="stat-label">Total Saldo</div>
-            <div class="stat-value" id="totalBalance">Rp 0</div>
-            <div class="stat-change" id="balanceChange">—</div>
-          </div>
-          <div class="stat-card income">
-            <span class="stat-icon">↑</span>
-            <div class="stat-label">Total Pemasukan</div>
-            <div class="stat-value" id="totalIncome">Rp 0</div>
-            <div class="stat-change" id="incomeCount">0 transaksi</div>
-          </div>
-          <div class="stat-card expense">
-            <span class="stat-icon">↓</span>
-            <div class="stat-label">Total Pengeluaran</div>
-            <div class="stat-value" id="totalExpense">Rp 0</div>
-            <div class="stat-change" id="expenseCount">0 transaksi</div>
-          </div>
-          <div class="stat-card savings">
-            <span class="stat-icon">◆</span>
-            <div class="stat-label">Tabungan</div>
-            <div class="stat-value" id="totalSavings">Rp 0</div>
-            <div class="stat-change" id="savingsRate">0% dari pemasukan</div>
-          </div>
-        </div>
+        <div class="bento-grid">
 
-        <!-- Charts -->
-        <div class="charts-grid">
-          <div class="chart-card">
+          <!-- Row 1: Scholarship + Saldo -->
+          <div class="bento-card bento-scholarship">
+            <div class="bento-card-header">
+              <span class="bento-label">Scholarship Monitoring</span>
+              <span class="bento-pct" id="scholarshipPct">0%</span>
+            </div>
+            <div class="schol-bar-wrap">
+              <div class="schol-bar" id="scholarshipBar" style="width:0%"></div>
+            </div>
+            <div class="schol-info">
+              <span id="scholarshipUsed">Rp 0</span> / <span id="scholarshipTotal">Rp 8.400.000</span>
+            </div>
+            <div class="schol-sisa">Sisa Dana Beasiswa: <span id="scholarshipSisa">Rp 8.400.000</span></div>
+          </div>
+
+          <div class="bento-card bento-saldo">
+            <div class="bento-card-header">
+              <span class="bento-label">Total Saldo Netto</span>
+              <span class="badge neu" id="balanceChange">—</span>
+            </div>
+            <div class="bento-val purple" id="totalBalance">Rp 0</div>
+          </div>
+
+          <!-- Row 2: Pemasukan + Pengeluaran -->
+          <div class="bento-card bento-income">
+            <div class="bento-label">Total Pemasukan</div>
+            <div class="bento-val green" id="totalIncome">Rp 0</div>
+            <div class="bento-sub" id="incomeCount">0 transaksi</div>
+          </div>
+
+          <div class="bento-card bento-expense">
+            <div class="bento-label">Total Pengeluaran</div>
+            <div class="bento-val red" id="totalExpense">Rp 0</div>
+            <div class="bento-sub" id="expenseCount">0 transaksi</div>
+          </div>
+
+          <!-- Row 3: Tren Chart (full width) -->
+          <div class="bento-card bento-trend">
             <div class="chart-header">
               <div>
                 <div class="chart-title">Tren Keuangan</div>
-                <div class="chart-subtitle">Pemasukan vs Pengeluaran per bulan</div>
+                <div class="chart-subtitle">Arus kas 6 bulan</div>
               </div>
             </div>
-            <div class="chart-container" style="height:220px;">
+            <div class="chart-container" style="height:200px;">
               <canvas id="trendChart"></canvas>
             </div>
           </div>
-          <div class="chart-card">
+
+          <!-- Row 4: Kategori + Recent Tx -->
+          <div class="bento-card bento-category">
             <div class="chart-header">
               <div>
-                <div class="chart-title">Kategori</div>
+                <div class="chart-title">Kategori Terbesar</div>
                 <div class="chart-subtitle">Distribusi pengeluaran</div>
               </div>
             </div>
-            <div class="chart-container" style="height:220px;">
+            <div class="chart-container" style="height:180px;">
               <canvas id="categoryChart"></canvas>
             </div>
           </div>
-        </div>
 
-        <!-- Recent Transactions -->
-        <div class="chart-card">
-          <div class="section-header">
-            <div>
-              <div class="section-title">Transaksi Terbaru</div>
-              <div class="section-sub">5 transaksi terakhir</div>
+          <div class="bento-card bento-recent">
+            <div class="recent-header" style="padding:0 0 12px;">
+              <div>
+                <div class="recent-title">Transaksi Terbaru</div>
+                <div class="section-sub">5 transaksi terakhir</div>
+              </div>
+              <span class="view-all-link" onclick="navigate('transactions')">Lihat Semua →</span>
             </div>
-            <button class="btn btn-ghost btn-sm" onclick="navigate('transactions')">Lihat Semua →</button>
-          </div>
-          <div id="recentTxList" class="tx-list">
-            <div class="empty-state">
-              <div class="empty-icon">⊙</div>
-              <h3>Belum ada transaksi</h3>
-              <p>Klik "+ Transaksi" untuk mulai</p>
+            <div id="recentTxList" class="tx-list">
+              <div class="empty-state">
+                <div class="empty-icon">⊙</div>
+                <h3>Belum ada transaksi</h3>
+                <p>Klik "+ Transaksi" untuk mulai</p>
+              </div>
             </div>
           </div>
+
         </div>
       </div>
 
@@ -340,14 +349,16 @@
             <span class="search-icon">⌕</span>
             <input type="text" id="searchInput" placeholder="Cari transaksi..." oninput="renderTransactions()" />
           </div>
-          <select id="filterType" onchange="renderTransactions()">
-            <option value="">Semua Tipe</option>
-            <option value="income">Pemasukan</option>
-            <option value="expense">Pengeluaran</option>
-          </select>
-          <select id="filterCat" onchange="renderTransactions()">
-            <option value="">Semua Kategori</option>
-          </select>
+          <div class="tx-filters">
+            <select id="filterType" onchange="renderTransactions()">
+              <option value="">Semua Tipe</option>
+              <option value="income">Pemasukan</option>
+              <option value="expense">Pengeluaran</option>
+            </select>
+            <select id="filterCat" onchange="renderTransactions()">
+              <option value="">Semua Kategori</option>
+            </select>
+          </div>
         </div>
 
         <div id="txList" class="tx-list"></div>
@@ -525,8 +536,59 @@ alter table transactions enable row level security;
 create policy "Users can manage own transactions"
   on transactions for all
   using (auth.uid() = user_id);
-</pre>
+
+-- Tabel Semester (baru)
+create table semesters (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id),
+  number integer not null,
+  label text not null,
+  start_month text not null,
+  end_month text not null,
+  created_at timestamptz default now()
+);
+alter table semesters enable row level security;
+create policy "Users can manage own semesters"
+  on semesters for all
+  using (auth.uid() = user_id);</pre>
           <button class="btn btn-ghost btn-sm" onclick="copySQL()" style="margin-top:10px;">⎘ Copy SQL</button>
+        </div>
+
+        <!-- Semester Management -->
+        <div class="config-panel">
+          <div class="config-title">Manajemen Semester</div>
+          <div class="config-sub">Atur semester sesuai kalender akademik. Data akan terfilter per semester di seluruh halaman.</div>
+
+          <!-- Semester list -->
+          <div id="semesterList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
+
+          <!-- Add semester form -->
+          <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;background:var(--bg2);">
+            <div style="font-size:0.78rem;font-weight:600;color:var(--text2);margin-bottom:12px;" id="semFormTitle">+ Tambah Semester</div>
+            <input type="hidden" id="semEditId" value="" />
+            <div class="config-grid" style="margin-bottom:10px;">
+              <div class="form-group">
+                <label class="form-label">Nomor Semester</label>
+                <input type="number" id="semNumber" class="form-input" placeholder="Contoh: 4" min="1" max="20" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Label (opsional)</label>
+                <input type="text" id="semLabel" class="form-input" placeholder="Contoh: Semester 4" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bulan Mulai</label>
+                <input type="month" id="semStart" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Bulan Selesai</label>
+                <input type="month" id="semEnd" class="form-input" />
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="saveSemester()">Simpan</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelSemesterEdit()" id="semCancelBtn" style="display:none;">Batal</button>
+            </div>
+          </div>
         </div>
 
         <div class="config-panel">
@@ -536,6 +598,26 @@ create policy "Users can manage own transactions"
             <button class="btn btn-danger" onclick="clearLocalData()">⊘ Hapus Data Lokal</button>
           </div>
           <div style="font-size:0.75rem;color:var(--text3);margin-top:12px;" id="localDataInfo"></div>
+        </div>
+
+        <!-- Mobile-only: Akun & Tampilan -->
+        <div class="config-panel mobile-only-panel">
+          <div class="config-title">Akun</div>
+          <div class="config-sub">Info akun yang sedang login</div>
+          <div class="account-box" id="accountBoxMobile" style="margin-bottom:14px;">
+            <div class="account-avatar" id="accountAvatarMobile">A</div>
+            <div class="account-info">
+              <div class="account-email" id="accountEmailMobile">user@email.com</div>
+              <div class="account-status">Cloud Sync Aktif</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="theme-toggle" onclick="toggleTheme()" style="flex:1;">
+              <span id="themeIconMobile">☀</span>
+              <span id="themeLabelMobile">Mode Terang</span>
+            </div>
+            <button class="btn btn-danger" id="logoutBtnMobile" onclick="handleLogout()" style="display:none;">⎋ Logout</button>
+          </div>
         </div>
       </div>
 
@@ -622,103 +704,25 @@ create policy "Users can manage own transactions"
     "
   >
 
-    <h3
-      style="
-        margin:0 0 20px;
-        font-size:1.1rem;
-        color:var(--text);
-      "
-    >
+    <h3 style="margin:0 0 20px;font-size:1.1rem;color:var(--text);">
       📋 Export Laporan Beasiswa
     </h3>
 
-    <!-- SEMESTER -->
-
-    <label
-      style="
-        font-size:0.82rem;
-        color:var(--text-muted);
-        display:block;
-        margin-bottom:6px;
-      "
-    >
-      Semester
-    </label>
-
-    <select
-      id="lpjSemester"
-      style="
-        width:100%;
-        padding:12px 14px;
-        border-radius:12px;
-        border:1px solid var(--border);
-        background:var(--bg);
-        color:var(--text);
-        font-size:0.92rem;
-        margin-bottom:16px;
-      "
-    >
-    </select>
+    <!-- SEMESTER INFO (read-only, dari semester aktif) -->
+    <label style="font-size:0.72rem;color:var(--text3);display:block;margin-bottom:5px;letter-spacing:0.04em;">SEMESTER</label>
+    <div id="lpjSemesterInfo" style="padding:10px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:0.85rem;margin-bottom:16px;">
+      —
+    </div>
 
     <!-- DANA -->
-
-    <label
-      style="
-        font-size:0.82rem;
-        color:var(--text-muted);
-        display:block;
-        margin-bottom:6px;
-      "
-    >
-      Dana Beasiswa (Rp)
-    </label>
-
-    <input
-      id="lpjDana"
-      type="number"
-      value="8400000"
-      style="
-        width:100%;
-        padding:12px 14px;
-        border-radius:12px;
-        border:1px solid var(--border);
-        background:var(--bg);
-        color:var(--text);
-        font-size:0.92rem;
-        margin-bottom:16px;
-        box-sizing:border-box;
-      "
-    />
+    <label style="font-size:0.72rem;color:var(--text3);display:block;margin-bottom:5px;letter-spacing:0.04em;">DANA BEASISWA (Rp)</label>
+    <input id="lpjDana" type="number" value="8400000"
+      style="width:100%;padding:10px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:0.85rem;margin-bottom:16px;box-sizing:border-box;" />
 
     <!-- LINK -->
-
-    <label
-      style="
-        font-size:0.82rem;
-        color:var(--text-muted);
-        display:block;
-        margin-bottom:6px;
-      "
-    >
-      Link Bukti (Google Drive / PDF)
-    </label>
-
-    <input
-      id="lpjLink"
-      type="url"
-      placeholder="https://drive.google.com/..."
-      style="
-        width:100%;
-        padding:12px 14px;
-        border-radius:12px;
-        border:1px solid var(--border);
-        background:var(--bg);
-        color:var(--text);
-        font-size:0.92rem;
-        margin-bottom:22px;
-        box-sizing:border-box;
-      "
-    />
+    <label style="font-size:0.72rem;color:var(--text3);display:block;margin-bottom:5px;letter-spacing:0.04em;">LINK BUKTI (Google Drive / PDF)</label>
+    <input id="lpjLink" type="url" placeholder="https://drive.google.com/..."
+      style="width:100%;padding:10px 13px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:0.85rem;margin-bottom:22px;box-sizing:border-box;" />
 
     <!-- ACTION -->
 
@@ -774,6 +778,28 @@ create policy "Users can manage own transactions"
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="script.js"></script>
-</body>
 
+<!-- Mobile Bottom Navigation -->
+<nav class="bottom-nav" id="bottomNav">
+  <div class="bottom-nav-item active" onclick="navigate('dashboard')" id="bnav-dashboard">
+    <span class="bnav-icon">⬡</span>
+    <span class="bnav-label">Home</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('transactions')" id="bnav-transactions">
+    <span class="bnav-icon">⇄</span>
+    <span class="bnav-label">Transaksi</span>
+  </div>
+  <div class="bottom-nav-fab" onclick="navigate('scanner')">
+    <span style="font-size:1.3rem">⊡</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('analytics')" id="bnav-analytics">
+    <span class="bnav-icon">◈</span>
+    <span class="bnav-label">Analitik</span>
+  </div>
+  <div class="bottom-nav-item" onclick="navigate('settings')" id="bnav-settings">
+    <span class="bnav-icon">⊕</span>
+    <span class="bnav-label">Settings</span>
+  </div>
+</nav>
+</body>
 </html>
