@@ -653,9 +653,23 @@ function renderCatBreakdown() {
 }
 
 function renderAnalyticsBarChart() {
-  const months = getLast6Months();
-  const incomeData = months.map(m => transactions.filter(t => t.type==='income' && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0));
-  const expenseData = months.map(m => transactions.filter(t => t.type==='expense' && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0));
+  // Pakai range bulan dari semester aktif
+  let months = [];
+  if (activeSemester) {
+    let cur = activeSemester.start_month;
+    const end = activeSemester.end_month;
+    while (cur <= end) {
+      months.push(cur);
+      const [y, m] = cur.split('-').map(Number);
+      cur = m === 12 ? `${y+1}-01` : `${y}-${String(m+1).padStart(2,'0')}`;
+    }
+  } else {
+    months = getLast6Months();
+  }
+
+  const filteredTx = getFilteredTx();
+  const incomeData  = months.map(m => filteredTx.filter(t => t.type==='income'  && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0));
+  const expenseData = months.map(m => filteredTx.filter(t => t.type==='expense' && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0));
   const labels = months.map(m => { const [y,mo] = m.split('-'); return new Date(y,mo-1).toLocaleDateString('id',{month:'short'}); });
 
   if (charts.analyticsBar) charts.analyticsBar.destroy();
@@ -678,11 +692,26 @@ function renderAnalyticsBarChart() {
 }
 
 function renderMonthlyTable() {
-  const months = getLast6Months().reverse();
+  // Pakai range bulan dari semester aktif
+  let months = [];
+  if (activeSemester) {
+    let cur = activeSemester.start_month;
+    const end = activeSemester.end_month;
+    while (cur <= end) {
+      months.push(cur);
+      const [y, m] = cur.split('-').map(Number);
+      cur = m === 12 ? `${y+1}-01` : `${y}-${String(m+1).padStart(2,'0')}`;
+    }
+    months = months.reverse();
+  } else {
+    months = getLast6Months().reverse();
+  }
+
+  const filteredTx = getFilteredTx();
   const tbody = document.getElementById('monthlyTableBody');
   tbody.innerHTML = months.map(m => {
-    const txs = transactions.filter(t => t.date && t.date.startsWith(m));
-    const income = txs.filter(t => t.type==='income').reduce((s,t) => s+t.amount, 0);
+    const txs = filteredTx.filter(t => t.date && t.date.startsWith(m));
+    const income  = txs.filter(t => t.type==='income').reduce((s,t) => s+t.amount, 0);
     const expense = txs.filter(t => t.type==='expense').reduce((s,t) => s+t.amount, 0);
     const balance = income - expense;
     const savRate = income > 0 ? ((Math.max(0, balance) / income) * 100).toFixed(0) : 0;
