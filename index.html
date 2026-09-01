@@ -508,6 +508,21 @@
           <div id="connStatus" style="font-size:0.75rem;margin-top:10px;color:var(--text3);"></div>
         </div>
 
+        <!-- Gemini AI Config -->
+        <div class="config-panel">
+          <div class="config-title">Konfigurasi Gemini AI</div>
+          <div class="config-sub">Tambahkan Gemini API Key untuk scan struk yang lebih akurat dengan AI. Tanpa key, OCR tetap berjalan dengan Tesseract.js. <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent2);">Dapatkan API Key gratis →</a></div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">Gemini API Key</label>
+            <input type="password" id="cfgGeminiKey" class="form-input" placeholder="AIza..." />
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-primary" onclick="saveGeminiConfig()">Simpan Key</button>
+            <button class="btn btn-ghost" onclick="clearGeminiConfig()">Hapus Key</button>
+            <span id="geminiStatus" style="font-size:0.72rem;color:var(--text3);"></span>
+          </div>
+        </div>
+
         <div class="config-panel">
           <div class="config-title">SQL Setup Supabase</div>
           <div class="config-sub">Jalankan SQL ini di Supabase SQL Editor untuk membuat tabel:</div>

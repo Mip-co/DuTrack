@@ -15,6 +15,7 @@ let supabaseClient = null;
 let currentUser = null;
 let isGuest = false;
 let charts = {};
+let GEMINI_KEY = localStorage.getItem('ft_gemini_key') || '';
 window.currentReceiptFile = null;
 
 // ===== BEASISWA CONSTANTS =====
@@ -884,6 +885,9 @@ function navigate(page) {
   if (page === 'settings') {
     document.getElementById('cfgUrl').value = SUPABASE_URL;
     document.getElementById('cfgKey').value = SUPABASE_KEY;
+    const gemEl = document.getElementById('cfgGeminiKey');
+    if (gemEl) gemEl.value = GEMINI_KEY ? '••••••••••••••••' : '';
+    updateGeminiStatus();
   }
 }
 
@@ -927,6 +931,40 @@ function toggleTheme() {
   }
 })();
 
+// ===== GEMINI CONFIG =====
+function saveGeminiConfig() {
+  const key = document.getElementById('cfgGeminiKey').value.trim();
+  if (!key || key.includes('•')) {
+    showToast('Masukkan API Key yang valid', 'error');
+    return;
+  }
+  GEMINI_KEY = key;
+  localStorage.setItem('ft_gemini_key', key);
+  document.getElementById('cfgGeminiKey').value = '••••••••••••••••';
+  updateGeminiStatus();
+  showToast('Gemini API Key tersimpan ✓', 'success');
+}
+
+function clearGeminiConfig() {
+  GEMINI_KEY = '';
+  localStorage.removeItem('ft_gemini_key');
+  document.getElementById('cfgGeminiKey').value = '';
+  updateGeminiStatus();
+  showToast('Gemini API Key dihapus', 'info');
+}
+
+function updateGeminiStatus() {
+  const el = document.getElementById('geminiStatus');
+  if (!el) return;
+  if (GEMINI_KEY) {
+    el.textContent = '✓ AI aktif — scan struk menggunakan Gemini';
+    el.style.color = 'var(--green)';
+  } else {
+    el.textContent = 'Tanpa key — menggunakan Tesseract.js (OCR dasar)';
+    el.style.color = 'var(--text3)';
+  }
+}
+
 // ===== OCR SCANNER =====
 function setupDragDrop() {
   const zone = document.getElementById('scannerZone');
@@ -946,99 +984,178 @@ function processReceipt(event) {
 }
 
 async function processReceiptFile(file) {
-
   window.currentReceiptFile = file;
 
   const progress = document.getElementById('ocrProgress');
-  const preview = document.getElementById('ocrPreview');
-  const bar = document.getElementById('progressBar');
-  const status = document.getElementById('progressStatus');
-  const label = document.getElementById('ocrLabel');
+  const preview  = document.getElementById('ocrPreview');
+  const bar      = document.getElementById('progressBar');
+  const status   = document.getElementById('progressStatus');
+  const label    = document.getElementById('ocrLabel');
 
   // Show preview image
   const reader = new FileReader();
-
-  reader.onload = e => {
-    document.getElementById('previewImg').src =
-      e.target.result;
-  };
-
+  reader.onload = e => { document.getElementById('previewImg').src = e.target.result; };
   reader.readAsDataURL(file);
 
   progress.classList.add('visible');
   preview.classList.remove('visible');
-
   bar.style.width = '0%';
 
-  label.textContent =
-    'Memproses OCR dengan Tesseract.js...';
+  if (GEMINI_KEY) {
+    await processWithGemini(file, bar, status, label, progress, preview);
+  } else {
+    await processWithTesseract(file, bar, status, label, progress, preview);
+  }
+}
 
-  status.textContent = 'Menginisialisasi...';
-
+// ===== GEMINI VISION OCR =====
+async function processWithGemini(file, bar, status, label, progress, preview) {
   try {
+    label.textContent = '🤖 Memproses dengan Gemini AI...';
+    status.textContent = 'Mengkonversi gambar...';
+    bar.style.width = '20%';
+
+    // Convert file to base64
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = () => rej(new Error('Gagal baca file'));
+      r.readAsDataURL(file);
+    });
+
+    status.textContent = 'Mengirim ke Gemini AI...';
+    bar.style.width = '40%';
+
+    const prompt = `Kamu adalah asisten ekstraksi data struk belanja. Analisis gambar struk ini dan ekstrak informasi berikut dalam format JSON.
+
+Kembalikan HANYA JSON tanpa penjelasan, tanpa markdown, tanpa backtick.
+
+Format JSON yang harus dikembalikan:
+{
+  "amount": <total belanja dalam angka bulat tanpa titik/koma, contoh: 15000>,
+  "date": "<tanggal dalam format YYYY-MM-DD, jika tidak ada gunakan hari ini>",
+  "description": "<nama toko atau jenis belanja singkat, max 50 karakter>",
+  "category": "<salah satu dari: Makanan & Minuman, Transport, Kosan, Belanja, Hiburan, Kesehatan, Pendidikan, Tagihan & Utilitas, Lainnya>",
+  "confidence": "<high/medium/low>"
+}
+
+Petunjuk:
+- amount: cari total/grand total/jumlah akhir, bukan subtotal
+- date: format YYYY-MM-DD, perhatikan format tanggal Indonesia (dd/mm/yyyy)
+- description: nama merchant/toko yang jelas
+- category: pilih berdasarkan jenis transaksi (Indomaret/Alfamart → Belanja, restoran/warteg → Makanan & Minuman, grab/gojek → Transport, dll)
+- Jika gambar bukan struk atau tidak bisa dibaca, kembalikan amount: 0`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: file.type || 'image/jpeg', data: base64 } }
+            ]
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
+        })
+      }
+    );
+
+    bar.style.width = '80%';
+    status.textContent = 'Memproses hasil AI...';
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Parse JSON from response
+    let result;
+    try {
+      const clean = rawText.replace(/```json|```/g, '').trim();
+      result = JSON.parse(clean);
+    } catch {
+      throw new Error('Gemini mengembalikan format yang tidak valid');
+    }
+
+    bar.style.width = '100%';
+    status.textContent = 'Selesai!';
+
+    // Fill form
+    document.getElementById('ocrAmount').value   = result.amount || '';
+    document.getElementById('ocrDate').value     = result.date   || new Date().toISOString().split('T')[0];
+    document.getElementById('ocrDesc').value     = result.description || '';
+    document.getElementById('ocrRaw').value      = JSON.stringify(result, null, 2);
+
+    // Set category if match
+    const catSelect = document.getElementById('ocrCategory');
+    if (catSelect && result.category) {
+      const opt = [...catSelect.options].find(o => o.value === result.category);
+      if (opt) catSelect.value = result.category;
+    }
+
+    progress.classList.remove('visible');
+    preview.classList.add('visible');
+
+    const confLabel = result.confidence === 'high' ? '✓ Tinggi' : result.confidence === 'medium' ? '~ Sedang' : '⚠ Rendah';
+    showToast(`Gemini AI berhasil! Akurasi: ${confLabel}`, 'success');
+
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    bar.style.width = '0%';
+    showToast(`Gemini gagal: ${e.message}. Mencoba Tesseract...`, 'error');
+    // Fallback ke Tesseract
+    await processWithTesseract(window.currentReceiptFile, bar, status, label, progress, preview);
+  }
+}
+
+// ===== TESSERACT OCR (fallback) =====
+async function processWithTesseract(file, bar, status, label, progress, preview) {
+  try {
+    label.textContent = 'Memproses OCR dengan Tesseract.js...';
+    status.textContent = 'Menginisialisasi...';
+    bar.style.width = '0%';
 
     const { createWorker } = Tesseract;
-
     const worker = await createWorker('ind+eng', 1, {
       logger: m => {
-
         if (m.status === 'recognizing text') {
-
-          bar.style.width =
-            (m.progress * 100).toFixed(0) + '%';
-
-          status.textContent =
-            `Membaca teks: ${(m.progress * 100).toFixed(0)}%`;
-
+          bar.style.width = (m.progress * 100).toFixed(0) + '%';
+          status.textContent = `Membaca teks: ${(m.progress * 100).toFixed(0)}%`;
         } else {
           status.textContent = m.status;
         }
       }
     });
 
-    const {
-      data: { text }
-    } = await worker.recognize(file);
-
+    const { data: { text } } = await worker.recognize(file);
     await worker.terminate();
 
     bar.style.width = '100%';
-
     status.textContent = 'OCR selesai!';
 
     const amount = extractAmount(text);
-    const date = extractDate(text);
+    const date   = extractDate(text);
 
-    document.getElementById('ocrRaw').value = text;
-
-    document.getElementById('ocrAmount').value =
-      amount || '';
-
-    document.getElementById('ocrDate').value =
-      date || new Date().toISOString().split('T')[0];
-
-    document.getElementById('ocrDesc').value =
-      'Pengeluaran dari struk';
+    document.getElementById('ocrRaw').value    = text;
+    document.getElementById('ocrAmount').value = amount || '';
+    document.getElementById('ocrDate').value   = date || new Date().toISOString().split('T')[0];
+    document.getElementById('ocrDesc').value   = 'Pengeluaran dari struk';
 
     progress.classList.remove('visible');
-
     preview.classList.add('visible');
 
-    showToast(
-      'OCR berhasil! Periksa dan edit data jika perlu.',
-      'success'
-    );
+    showToast('OCR selesai! Periksa dan edit data jika perlu.', 'success');
 
   } catch(e) {
-
     status.textContent = 'Error: ' + e.message;
-
     bar.style.width = '0%';
-
-    showToast(
-      'OCR gagal: ' + e.message,
-      'error'
-    );
+    showToast('OCR gagal: ' + e.message, 'error');
   }
 }
 
@@ -1771,7 +1888,7 @@ function generateBeasiswa() {
   _buildSheetLPJ(wb, catTotals, totalSpent, dana, buktiLink, semesterLabel);
 
   const filename = `DuTrack_LPJ_${semesterLabel.replace(/\s+/g,'-')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  XLSX.writeFile(wb, filename, { bookType: 'xlsx', type: 'binary' });
 
   closeLpjModal();
   showToast('📋 LPJ Beasiswa berhasil diexport!', 'success');
@@ -2014,10 +2131,14 @@ function _buildSheetDetail(wb, txs, catTotals, semLabel) {
       ws[_addr(row,4)] = _cell(tx.description || '-',        false, 9, '2D2D4E', bg, 'left',   'center');
       ws[_addr(row,5)] = _cell(rpFmt(tx.amount),             false, 9, '2D2D4E', bg, 'right',  'center');
       // Link struk — biru jika ada
-      const linkVal = tx.receipt_url || '-';
-      ws[_addr(row,6)] = _cell(linkVal, false, 9,
-        tx.receipt_url ? '0563C1' : 'A8A8C8', bg, 'left', 'center');
-      if (tx.receipt_url) ws[_addr(row,6)].l = { Target: tx.receipt_url };
+      // Link struk — teks pendek + hyperlink
+      if (tx.receipt_url) {
+        ws[_addr(row,6)] = _cell('📎 Lihat Struk', false, 9, '0563C1', bg, 'left', 'center');
+        ws[_addr(row,6)].s.font.underline = true;
+        ws[_addr(row,6)].l = { Target: tx.receipt_url, Tooltip: tx.receipt_url };
+      } else {
+        ws[_addr(row,6)] = _cell('-', false, 9, 'A8A8C8', bg, 'left', 'center');
+      }
       row++;
     });
  
