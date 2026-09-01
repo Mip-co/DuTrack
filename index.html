@@ -224,23 +224,13 @@
         class="btn btn-ghost btn-sm"
         onclick="toggleExportMenu(event)"
       >
-        ⬇ Export
+        <span class="btn-icon-only">⬇</span>
+        <span class="btn-text">Export</span>
       </button>
 
-      <div
-        class="export-menu"
-        id="exportMenu"
-      >
-
-        <button onclick="openLpjModal()">
-          XLSX (LPJ Beasiswa)
-        </button>
-
-        <button onclick="exportPDF()">
-          PDF
-        </button>
-
-      
+      <div class="export-menu" id="exportMenu">
+        <button onclick="openLpjModal()">XLSX (LPJ Beasiswa)</button>
+        <button onclick="exportPDF()">PDF</button>
       </div>
 
     </div>
@@ -249,7 +239,8 @@
       class="btn btn-primary btn-sm"
       onclick="openModal()"
     >
-      + Transaksi
+      <span class="btn-icon-only">＋</span>
+      <span class="btn-text">Transaksi</span>
     </button>
 
   </div>

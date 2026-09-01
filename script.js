@@ -374,7 +374,7 @@ function initSemesterFilter() {
   }
   const sorted = [...semesters].sort((a,b) => b.number - a.number);
   select.innerHTML = sorted.map(s =>
-    `<option value="${s.id}">${s.label || 'Semester ' + s.number} (${fmtMonth(s.start_month)}–${fmtMonth(s.end_month)})</option>`
+    `<option value="${s.id}">${s.label || 'Semester ' + s.number}</option>`
   ).join('');
   // Default ke semester terbaru jika belum ada pilihan aktif
   if (!activeSemester || !semesters.find(s => s.id === activeSemester.id)) {
@@ -529,13 +529,23 @@ function renderCharts() {
 }
 
 function renderTrendChart() {
-  const months = getLast6Months();
-  const incomeData = months.map(m => {
-    return transactions.filter(t => t.type==='income' && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0);
-  });
-  const expenseData = months.map(m => {
-    return transactions.filter(t => t.type==='expense' && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0);
-  });
+  // Pakai range bulan dari semester aktif
+  let months = [];
+  if (activeSemester) {
+    let cur = activeSemester.start_month;
+    const end = activeSemester.end_month;
+    while (cur <= end) {
+      months.push(cur);
+      const [y, m] = cur.split('-').map(Number);
+      cur = m === 12 ? `${y+1}-01` : `${y}-${String(m+1).padStart(2,'0')}`;
+    }
+  } else {
+    months = getLast6Months();
+  }
+
+  const filteredTx = getFilteredTx();
+  const incomeData  = months.map(m => filteredTx.filter(t => t.type==='income'  && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0));
+  const expenseData = months.map(m => filteredTx.filter(t => t.type==='expense' && t.date && t.date.startsWith(m)).reduce((s,t) => s+t.amount, 0));
   const labels = months.map(m => {
     const [y, mo] = m.split('-');
     return new Date(y, mo-1).toLocaleDateString('id', { month: 'short' });
