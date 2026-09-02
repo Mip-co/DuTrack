@@ -516,11 +516,11 @@
             <label class="form-label">Gemini API Key</label>
             <input type="password" id="cfgGeminiKey" class="form-input" placeholder="AIza..." />
           </div>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <button class="btn btn-primary" onclick="saveGeminiConfig()">Simpan Key</button>
-            <button class="btn btn-ghost" onclick="clearGeminiConfig()">Hapus Key</button>
-            <span id="geminiStatus" style="font-size:0.72rem;color:var(--text3);"></span>
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <button class="btn btn-primary btn-sm" onclick="saveGeminiConfig()">Simpan Key</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearGeminiConfig()">Hapus Key</button>
           </div>
+          <div id="geminiStatus" style="font-size:0.72rem;color:var(--text3);min-height:18px;"></div>
         </div>
 
         <div class="config-panel">
