@@ -1,10 +1,11 @@
 # 💰 DuTrack
 
-> Aplikasi pembukuan keuangan beasiswa — catat pengeluaran, scan struk, dan generate laporan LPJ otomatis.
- 
+> Aplikasi pembukuan keuangan beasiswa — catat pengeluaran, scan struk dengan AI, dan generate laporan LPJ otomatis per semester.
+
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-dutrack.vercel.app-7C6AF5?style=for-the-badge)](https://dutrack.vercel.app)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000000?style=for-the-badge&logo=vercel)](https://vercel.com)
 [![Supabase](https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
+[![Gemini](https://img.shields.io/badge/AI-Gemini_3.1_Flash_Lite-4285F4?style=for-the-badge&logo=google)](https://aistudio.google.com)
 
 ---
 
@@ -12,10 +13,12 @@
 
 | Fitur | Deskripsi |
 |---|---|
-| 📊 **Dashboard** | Saldo, pemasukan, pengeluaran, grafik tren & kategori |
+| 📊 **Dashboard Bento** | Scholarship monitoring, saldo, tren keuangan, kategori |
 | 💸 **Transaksi** | Tambah, edit, hapus, filter, search, pagination |
-| 📷 **Scan Struk OCR** | Upload foto struk → auto-deteksi nominal & tanggal |
+| 🤖 **Scan Struk AI** | Gemini Vision untuk ekstrak nominal, tanggal & kategori otomatis |
+| 📷 **Scan Struk OCR** | Fallback Tesseract.js jika tanpa Gemini API Key |
 | ☁️ **Cloud Sync** | Sinkronisasi data antar device via Supabase |
+| 📅 **Filter Semester** | Semua halaman & export terfilter per semester akademik |
 | 📋 **Export LPJ Beasiswa** | Generate XLSX siap submit per semester otomatis |
 | 📄 **Export PDF** | Laporan lengkap dengan tabel & ringkasan |
 | 🌙 **Dark / Light Mode** | Toggle tema sesuai preferensi |
@@ -28,7 +31,8 @@
 ```
 Frontend   → HTML, CSS, Vanilla JavaScript
 Charts     → Chart.js
-OCR        → Tesseract.js
+AI OCR     → Gemini 3.1 Flash Lite (Vision API)
+OCR        → Tesseract.js (fallback)
 Auth & DB  → Supabase (PostgreSQL + Row Level Security)
 Storage    → Supabase Storage (foto struk)
 Export     → SheetJS (xlsx-js-style), jsPDF, html2canvas
@@ -54,6 +58,7 @@ Hosting    → Vercel (auto-deploy dari GitHub)
 Masuk ke **SQL Editor → New Query**, paste SQL berikut lalu klik **Run:**
 
 ```sql
+-- Tabel transaksi
 create table transactions (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id),
@@ -65,15 +70,28 @@ create table transactions (
   receipt_url text,
   created_at timestamptz default now()
 );
-
 alter table transactions enable row level security;
-
 create policy "Users can manage own transactions"
   on transactions for all
   using (auth.uid() = user_id);
+
+-- Tabel semester
+create table semesters (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id),
+  number integer not null,
+  label text not null,
+  start_month text not null,
+  end_month text not null,
+  created_at timestamptz default now()
+);
+alter table semesters enable row level security;
+create policy "Users can manage own semesters"
+  on semesters for all
+  using (auth.uid() = user_id);
 ```
 
-Jika berhasil, tabel `transactions` muncul di **Database → Tables**.
+Jika berhasil, kedua tabel muncul di **Database → Tables**.
 
 ---
 
@@ -105,14 +123,16 @@ create policy "Public can view receipts"
 
 ---
 
-### 4. Ambil URL & Anon Key
+### 4. Ambil URL & Publishable Key
 
 | Field | Lokasi |
 |---|---|
 | **Project URL** | Settings → Integrations → Data API → API URL *(hapus `/rest/v1/` di akhir)* |
-| **Anon Key** | Settings → API Keys → baris `anon public` |
+| **Publishable Key** | Settings → API Keys → tab **API Keys** → copy **Publishable key** (`sb_publishable_...`) |
 
-> ⚠️ Jangan gunakan `service_role` key di frontend.
+> **Belum ada Publishable Key?** Klik **"Create new API Keys"** di tab API Keys — ini untuk project lama yang belum migrasi. Project baru sudah otomatis punya publishable key.
+
+> ⚠️ Jangan gunakan **Secret key** di frontend. Secret key hanya untuk server-side.
 
 ---
 
@@ -120,7 +140,7 @@ create policy "Public can view receipts"
 
 1. Buka [dutrack.vercel.app](https://dutrack.vercel.app)
 2. Pergi ke **Pengaturan → Konfigurasi Supabase**
-3. Isi **Supabase URL** dan **Anon Key**
+3. Isi **Supabase URL** dan **Publishable Key**
 4. Klik **Simpan & Hubungkan**
 5. Muncul ✅ `Koneksi berhasil! Tabel transactions ditemukan.`
 
@@ -150,6 +170,55 @@ Authentication → URL Configuration → Site URL → https://dutrack.vercel.app
 
 ---
 
+## 🤖 Setup Gemini AI (Opsional)
+
+Gemini AI meningkatkan akurasi scan struk secara signifikan — bisa baca foto buram, miring, dan auto-detect kategori. Tanpa key, OCR tetap berjalan dengan Tesseract.js.
+
+### 1. Dapatkan API Key
+
+1. Buka [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Login dengan akun Google
+3. Klik **Create API Key** → copy key yang dihasilkan
+
+> API Key Gemini gratis dengan kuota harian yang cukup untuk penggunaan personal.
+
+### 2. Masukkan ke DuTrack
+
+1. Buka **Pengaturan → Konfigurasi Gemini AI**
+2. Paste API Key di field **Gemini API Key**
+3. Klik **Simpan Key**
+4. Muncul ✅ `AI aktif — scan struk menggunakan Gemini`
+
+### 3. Perbandingan Gemini vs Tesseract
+
+| | Gemini AI | Tesseract.js |
+|---|---|---|
+| Akurasi nominal | ✅ Tinggi | ⚠️ Sedang |
+| Auto-detect kategori | ✅ Ya | ❌ Tidak |
+| Auto-isi keterangan | ✅ Nama toko | ❌ Generik |
+| Foto buram/miring | ✅ OK | ❌ Sering gagal |
+| Butuh internet | Ya | Tidak |
+
+---
+
+## 📅 Setup Semester
+
+### 1. Tambah Semester
+
+1. Buka **Pengaturan → Manajemen Semester**
+2. Isi nomor semester, label, bulan mulai & selesai
+3. Klik **Simpan**
+
+Contoh:
+- Semester 4: Mar 2026 – Agu 2026
+- Semester 5: Sep 2026 – Feb 2027
+
+### 2. Pilih Semester Aktif
+
+Pilih semester di dropdown topbar — semua halaman (dashboard, transaksi, analitik, export LPJ) otomatis terfilter ke rentang bulan semester tersebut.
+
+---
+
 ## 📖 Cara Pakai
 
 ### ⌨️ Shortcut
@@ -158,20 +227,21 @@ Authentication → URL Configuration → Site URL → https://dutrack.vercel.app
 |---|---|
 | `Ctrl+K` / `Cmd+K` | Buka modal tambah transaksi cepat |
 
-### 📷 Scan Struk OCR
+### 🤖 Scan Struk dengan AI
 
 1. Buka halaman **Scan Struk**
 2. Upload / drag & drop foto struk
-3. App otomatis deteksi nominal & tanggal
-4. Klik **Simpan Transaksi**
+3. Jika Gemini aktif → AI ekstrak nominal, tanggal, keterangan & kategori otomatis
+4. Periksa data, edit jika perlu
+5. Klik **Simpan Transaksi**
 
-> Tips: foto terang, teks jelas, tidak blur, posisi lurus.
+> Tips: foto terang, teks jelas, tidak blur, posisi lurus — meski Gemini bisa handle foto yang kurang sempurna.
 
 ### 📋 Export LPJ Beasiswa
 
-1. Klik **Export → LPJ Beasiswa**
-2. Pilih semester *(otomatis terdeteksi dari data transaksi)*
-3. Isi dana beasiswa per semester *(default Rp 8.400.000)*
+1. Pilih semester di dropdown topbar
+2. Klik **Export → LPJ Beasiswa**
+3. Isi dana beasiswa *(default Rp 8.400.000)*
 4. Paste link bukti (GDrive / PDF) — opsional
 5. Klik **Generate XLSX**
 
@@ -180,8 +250,10 @@ File hasil export berisi **3 sheet:**
 | Sheet | Isi |
 |---|---|
 | 📊 Dashboard | KPI dana, tabel per kategori, ringkasan per bulan |
-| 📂 Detail Transaksi | Semua transaksi per kategori + keterangan item + link struk |
+| 📂 Detail Transaksi | Semua transaksi per kategori + keterangan + link struk |
 | 📋 LPJ | Tabel LPJ format beasiswa, kolom bukti ter-merge + link |
+
+> **Catatan Windows:** File XLSX yang didownload dari browser mungkin diblokir Windows. Klik kanan file → Properties → centang **Unblock** → OK. Atau buka langsung dari Excel via File → Open.
 
 ### 🗂️ Mode Lokal
 
@@ -196,10 +268,12 @@ Data tersimpan di `localStorage` — tidak sinkron ke cloud, bisa hilang jika ca
 - Gunakan **Chrome** untuk hasil terbaik; Edge/Firefox dengan Tracking Prevention aktif bisa mengganggu localStorage dan Supabase client
 - Warning `Multiple GoTrueClient instances` di console adalah non-fatal, tidak mempengaruhi fungsi app
 - Project Supabase **otomatis pause** setelah 7 hari tidak ada aktivitas — resume manual lewat dashboard
+- Gemini API Key tersimpan di `localStorage` browser — tidak dikirim ke server manapun selain Google AI API
+
 ---
- 
+
 ## 📦 Struktur File
- 
+
 ```
 DuTrack/
 ├── index.html          # App utama (single-file)
@@ -208,7 +282,7 @@ DuTrack/
 ├── icon.png            # App icon
 └── README.md           # Dokumentasi ini
 ```
- 
+
 ---
- 
-*Made with ☕ for beasiswa reporting · Deployed on [Vercel](https://vercel.com) · Backend by [Supabase](https://supabase.com)*
+
+*Made with ☕ for beasiswa reporting · Deployed on [Vercel](https://vercel.com) · Backend by [Supabase](https://supabase.com) · AI by [Gemini](https://aistudio.google.com)*
